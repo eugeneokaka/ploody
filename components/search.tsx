@@ -98,9 +98,9 @@ export function SearchBar() {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-sm">
+    <div ref={containerRef} className="relative w-full max-w-sm md:max-w-md">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground md:h-4 md:w-4" />
         <Input
           ref={inputRef}
           value={query}
@@ -111,7 +111,7 @@ export function SearchBar() {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search notes and folders..."
-          className="h-8 pl-9 pr-10 text-sm"
+          className="h-10 pl-9 pr-10 text-base md:h-8 md:text-sm"
         />
         <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
           <span className="text-xs">⌘</span>K
@@ -119,14 +119,14 @@ export function SearchBar() {
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-lg md:left-auto md:right-auto">
           {loading ? (
-            <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground md:px-3 md:py-3">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               Searching...
             </div>
           ) : results.length === 0 && query.trim() ? (
-            <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground md:px-3 md:py-4">
               No results found
             </div>
           ) : (
@@ -137,33 +137,33 @@ export function SearchBar() {
                   onClick={() => handleSelect(result)}
                   onMouseEnter={() => setSelectedIndex(i)}
                   className={cn(
-                    "flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors",
+                    "flex w-full items-start gap-4 px-4 py-3.5 text-left transition-colors md:gap-3 md:px-3 md:py-2.5",
                     i === selectedIndex ? "bg-muted" : "hover:bg-muted/50"
                   )}
                 >
                   {result.type === "folder" ? (
-                    <FolderOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <FolderOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary md:h-4 md:w-4" />
                   ) : (
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground md:h-4 md:w-4" />
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">
+                      <span className="truncate text-base font-medium md:text-sm">
                         {result.title || "Untitled"}
                       </span>
-                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground md:px-1.5 md:text-[10px]">
                         {result.type}
                       </span>
                     </div>
                     {result.snippet && (
                       <p
-                        className="mt-0.5 line-clamp-1 text-xs text-muted-foreground"
+                        className="mt-1 line-clamp-2 text-sm text-muted-foreground md:mt-0.5 md:line-clamp-1 md:text-xs"
                         dangerouslySetInnerHTML={{ __html: result.snippet }}
                       />
                     )}
                   </div>
                   {i === selectedIndex && (
-                    <CornerDownLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <CornerDownLeft className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground md:h-3.5 md:w-3.5" />
                   )}
                 </button>
               ))}
@@ -171,7 +171,7 @@ export function SearchBar() {
           )}
 
           {!loading && query.trim() && (
-            <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
+            <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground md:px-3 md:py-1.5 md:text-[10px]">
               <kbd className="font-mono">↑↓</kbd> navigate{" "}
               <kbd className="font-mono">↵</kbd> open{" "}
               <kbd className="font-mono">esc</kbd> close
