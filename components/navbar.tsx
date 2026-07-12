@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, LogOut, Plus } from "lucide-react";
+import { Pencil, LogOut } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SearchBar } from "@/components/search";
@@ -49,15 +49,6 @@ export function Navbar() {
         )}
 
         <div className="flex items-center gap-3 shrink-0">
-          {session?.user && (
-            <Link
-              href="/notes/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Note
-            </Link>
-          )}
           {isPending ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           ) : session?.user ? (
