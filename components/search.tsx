@@ -119,36 +119,41 @@ export function SearchBar() {
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-lg md:left-auto md:right-auto">
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/20 md:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-50 w-[90%] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl md:absolute md:left-0 md:right-0 md:top-full md:w-auto md:max-w-md md:translate-x-0 md:translate-y-0 md:mt-1 md:rounded-lg md:shadow-lg">
           {loading ? (
-            <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground md:px-3 md:py-3">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="flex items-center gap-3 px-5 py-6 text-base text-muted-foreground md:px-3 md:py-3 md:text-sm">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent md:h-3 md:w-3" />
               Searching...
             </div>
           ) : results.length === 0 && query.trim() ? (
-            <div className="px-4 py-6 text-center text-sm text-muted-foreground md:px-3 md:py-4">
+            <div className="px-5 py-10 text-center text-base text-muted-foreground md:px-3 md:py-4 md:text-sm">
               No results found
             </div>
           ) : (
-            <div className="py-1">
+            <div className="py-2 md:py-1">
               {results.map((result, i) => (
                 <button
                   key={`${result.type}-${result.id}`}
                   onClick={() => handleSelect(result)}
                   onMouseEnter={() => setSelectedIndex(i)}
                   className={cn(
-                    "flex w-full items-start gap-4 px-4 py-3.5 text-left transition-colors md:gap-3 md:px-3 md:py-2.5",
+                    "flex w-full items-start gap-4 px-5 py-4 text-left transition-colors md:gap-3 md:px-3 md:py-2.5",
                     i === selectedIndex ? "bg-muted" : "hover:bg-muted/50"
                   )}
                 >
                   {result.type === "folder" ? (
-                    <FolderOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary md:h-4 md:w-4" />
+                    <FolderOpen className="mt-0.5 h-6 w-6 shrink-0 text-primary md:h-4 md:w-4" />
                   ) : (
-                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground md:h-4 md:w-4" />
+                    <FileText className="mt-0.5 h-6 w-6 shrink-0 text-muted-foreground md:h-4 md:w-4" />
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-base font-medium md:text-sm">
+                      <span className="truncate text-lg font-semibold md:text-sm md:font-medium">
                         {result.title || "Untitled"}
                       </span>
                       <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground md:px-1.5 md:text-[10px]">
@@ -157,7 +162,7 @@ export function SearchBar() {
                     </div>
                     {result.snippet && (
                       <p
-                        className="mt-1 line-clamp-2 text-sm text-muted-foreground md:mt-0.5 md:line-clamp-1 md:text-xs"
+                        className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground md:mt-0.5 md:line-clamp-1 md:text-xs"
                         dangerouslySetInnerHTML={{ __html: result.snippet }}
                       />
                     )}
@@ -171,13 +176,14 @@ export function SearchBar() {
           )}
 
           {!loading && query.trim() && (
-            <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground md:px-3 md:py-1.5 md:text-[10px]">
+            <div className="border-t border-border px-5 py-2.5 text-sm text-muted-foreground md:px-3 md:py-1.5 md:text-[10px]">
               <kbd className="font-mono">↑↓</kbd> navigate{" "}
               <kbd className="font-mono">↵</kbd> open{" "}
               <kbd className="font-mono">esc</kbd> close
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );
