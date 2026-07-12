@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Pencil, LogOut } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SearchBar } from "@/components/search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,11 +41,7 @@ export function Navbar() {
           <span className="text-lg font-semibold tracking-tight">Ploody</span>
         </Link>
 
-        {session?.user && (
-          <div className="flex-1 flex justify-center px-8">
-            <SearchBar />
-          </div>
-        )}
+        <div className="flex-1" />
 
         <div className="flex items-center gap-3 shrink-0">
           {isPending ? (

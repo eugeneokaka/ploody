@@ -3,6 +3,7 @@ import { Pencil, FileText } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { FolderBar } from "@/components/folder-bar";
+import { SearchBar } from "@/components/search";
 
 export default async function Home() {
   const session = await auth.api.getSession({
@@ -12,6 +13,11 @@ export default async function Home() {
   if (session?.user) {
     return (
       <div className="flex flex-1 flex-col">
+        <div className="border-b border-border px-4 py-3">
+          <div className="mx-auto w-full max-w-2xl">
+            <SearchBar />
+          </div>
+        </div>
         <div className="border-b border-border">
           <FolderBar />
         </div>
