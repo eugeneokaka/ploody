@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, LogOut } from "lucide-react";
+import { Pencil, LogOut, Plus } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SearchBar } from "@/components/search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,14 +35,29 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Pencil className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-semibold tracking-tight">Ploody</span>
         </Link>
 
-        <div>
+        {session?.user && (
+          <div className="flex-1 flex justify-center px-8">
+            <SearchBar />
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 shrink-0">
+          {session?.user && (
+            <Link
+              href="/notes/new"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Note
+            </Link>
+          )}
           {isPending ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           ) : session?.user ? (

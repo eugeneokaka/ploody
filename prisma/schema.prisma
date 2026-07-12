@@ -17,9 +17,48 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  folders       Folder[]
+  notes         Note[]
 
   @@unique([email])
   @@map("user")
+}
+
+model Folder {
+  id           String    @id @default(cuid())
+  name         String
+  parentId     String?
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Folder?   @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Folder[]  @relation("FolderTree")
+  notes        Note[]
+  searchVector Unsupported("tsvector")?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("folder")
+}
+
+model Note {
+  id           String    @id @default(cuid())
+  title        String
+  content      String    @db.Text
+  folderId     String?
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder       Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  searchVector Unsupported("tsvector")?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([folderId])
+  @@map("note")
 }
 
 model Session {
