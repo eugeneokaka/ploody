@@ -50,6 +50,10 @@
   content: attr(data-placeholder);
 }
 
+.tiptap .drawing-block {
+  @apply my-4;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -2,13 +2,12 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
-import LinkExtension from "@tiptap/extension-link";
 import ImageExtension from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { DrawingExtension } from "@/lib/drawing-extension";
 import {
   Bold,
   Italic,
@@ -28,6 +27,7 @@ import {
   Palette,
   Pilcrow,
   RemoveFormatting,
+  PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useState } from "react";
@@ -58,15 +58,13 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        link: { openOnClick: false },
+        underline: {},
       }),
-      Underline,
       TextStyle,
       Color,
       FontFamily.configure({
         types: ["textStyle"],
-      }),
-      LinkExtension.configure({
-        openOnClick: false,
       }),
       ImageExtension.configure({
         allowBase64: false,
@@ -74,6 +72,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
+      DrawingExtension,
     ],
     content: content ? JSON.parse(content) : undefined,
     onUpdate: ({ editor }) => {
@@ -263,6 +262,14 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
           </ToolbarButton>
           <ToolbarButton onClick={addImage}>
             <Image className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() =>
+              editor.chain().focus().insertContent({ type: "drawing" }).run()
+            }
+            title="Add drawing"
+          >
+            <PenLine className="h-4 w-4" />
           </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
