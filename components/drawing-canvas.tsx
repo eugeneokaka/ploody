@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Undo2, Check, X, Eraser, PenLine, Square, Circle, Type,
 } from "lucide-react";
@@ -62,6 +63,13 @@ export function DrawingCanvas({
   const [elements, setElements] = useState<CanvasElement[]>(initialStrokes);
   const [undoStack, setUndoStack] = useState<CanvasElement[][]>([]);
   const [tool, setTool] = useState<Tool>("pen");
+  const [textModal, setTextModal] = useState<{
+    x: number;
+    y: number;
+    initialText: string;
+    editTarget?: CanvasElement & { kind: "text" };
+  } | null>(null);
+  const textModalInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { currentColorRef.current = currentColor; }, [currentColor]);
   useEffect(() => { currentWidthRef.current = currentWidth; }, [currentWidth]);
@@ -69,6 +77,49 @@ export function DrawingCanvas({
     toolRef.current = tool;
     isErasingRef.current = tool === "eraser";
   }, [tool]);
+
+  useEffect(() => {
+    if (textModal && textModalInputRef.current) {
+      textModalInputRef.current.focus();
+    }
+  }, [textModal]);
+
+  const commitTextModal = useCallback((text: string) => {
+    const val = text.trim();
+    if (!textModal) return;
+    if (textModal.editTarget) {
+      if (val) {
+        setUndoStack((prev) => [...prev, elementsRef.current]);
+        elementsRef.current = elementsRef.current.map((el) =>
+          el === textModal.editTarget ? { ...el, text: val } : el,
+        );
+        setElements(elementsRef.current);
+      }
+    } else if (val) {
+      const newEl: CanvasElement = {
+        kind: "text",
+        x: textModal.x,
+        y: textModal.y,
+        w: 200,
+        h: 60,
+        text: val,
+        fontSize: 18,
+        color: currentColorRef.current,
+      };
+      setUndoStack((prev) => [...prev, elementsRef.current]);
+      elementsRef.current = [...elementsRef.current, newEl];
+      setElements(elementsRef.current);
+    }
+    setTextModal(null);
+  }, [textModal]);
+
+  const deleteTextFromModal = useCallback(() => {
+    if (!textModal?.editTarget) return;
+    setUndoStack((prev) => [...prev, elementsRef.current]);
+    elementsRef.current = elementsRef.current.filter((el) => el !== textModal.editTarget);
+    setElements(elementsRef.current);
+    setTextModal(null);
+  }, [textModal]);
 
   const scheduleDraw = useCallback(() => {
     if (rafRef.current) return;
@@ -303,22 +354,7 @@ export function DrawingCanvas({
 
       if (t === "text") {
         const pos = getPos(e.nativeEvent);
-        const text = window.prompt("Enter text:");
-        if (text && text.trim()) {
-          const newEl: CanvasElement = {
-            kind: "text",
-            x: pos[0],
-            y: pos[1],
-            w: 200,
-            h: 60,
-            text: text.trim(),
-            fontSize: 18,
-            color: currentColorRef.current,
-          };
-          setUndoStack((prev) => [...prev, elementsRef.current]);
-          elementsRef.current = [...elementsRef.current, newEl];
-          setElements(elementsRef.current);
-        }
+        setTextModal({ x: pos[0], y: pos[1], initialText: "" });
         return;
       }
 
@@ -487,6 +523,14 @@ export function DrawingCanvas({
     [drawAll, strikeStrokesWithEraser],
   );
 
+  const handlePointerLeave = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (isDraggingRef.current) return;
+      handlePointerUp(e);
+    },
+    [handlePointerUp],
+  );
+
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 && elementsRef.current.length === 0) return;
     const prev = undoStack[undoStack.length - 1] ?? [];
@@ -505,24 +549,7 @@ export function DrawingCanvas({
     const py = (e.clientY - rect.top) * (canvas.height / rect.height);
     const hit = hitTestText(px, py);
     if (!hit) return;
-    const existing = hit.el.text;
-    const text = window.prompt("Edit text:", existing);
-    if (text === null || text.trim() === "") {
-      if (existing) {
-        const t2 = window.confirm("Delete this text?");
-        if (t2) {
-          setUndoStack((prev) => [...prev, elementsRef.current]);
-          elementsRef.current = elementsRef.current.filter((elm) => elm !== hit.el);
-          setElements(elementsRef.current);
-        }
-      }
-      return;
-    }
-    setUndoStack((prev) => [...prev, elementsRef.current]);
-    elementsRef.current = elementsRef.current.map((elm) =>
-      elm === hit.el ? { ...elm, text: text.trim() } : elm,
-    );
-    setElements(elementsRef.current);
+    setTextModal({ x: hit.el.x, y: hit.el.y, initialText: hit.el.text, editTarget: hit.el });
   }, [hitTestText]);
 
   const tools: { id: Tool; icon: React.ElementType; label: string }[] = [
@@ -534,7 +561,7 @@ export function DrawingCanvas({
   ];
 
   return (
-    <div className="flex flex-col gap-2" contentEditable={false}>
+    <div className="flex flex-col gap-2 drawing-canvas-root" contentEditable={false}>
       <div className="flex items-center gap-1 flex-wrap">
         <div className="flex items-center gap-0.5 border-r border-border pr-2 mr-1">
           {tools.map(({ id, icon: Icon, label }) => (
@@ -625,9 +652,97 @@ export function DrawingCanvas({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
           onDoubleClick={handleTextDoubleClick}
         />
+      </div>
+      {textModal &&
+        createPortal(
+          <TextModal
+            initialText={textModal.initialText}
+            isEditing={!!textModal.editTarget}
+            onCommit={commitTextModal}
+            onDelete={deleteTextFromModal}
+            onCancel={() => setTextModal(null)}
+            inputRef={textModalInputRef}
+          />,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function TextModal({
+  initialText,
+  isEditing,
+  onCommit,
+  onDelete,
+  onCancel,
+  inputRef,
+}: {
+  initialText: string;
+  isEditing: boolean;
+  onCommit: (text: string) => void;
+  onDelete: () => void;
+  onCancel: () => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const [value, setValue] = useState(initialText);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCommit(value);
+      }}
+    >
+      <div
+        className="bg-background border border-border rounded-lg shadow-xl p-4 w-full max-w-sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <textarea
+          ref={inputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onCommit(value);
+            }
+            if (e.key === "Escape") {
+              onCancel();
+            }
+          }}
+          placeholder="Type something..."
+          rows={4}
+          className="w-full resize-none border border-border rounded-md p-3 text-sm font-sans focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <div className="flex items-center justify-between gap-2 mt-3">
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="h-8 rounded-md px-3 text-xs font-medium inline-flex items-center gap-1 text-destructive hover:bg-destructive/10"
+            >
+              Delete
+            </button>
+          )}
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-8 rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onCommit(value)}
+            className="h-8 rounded-md px-3 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/80"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
