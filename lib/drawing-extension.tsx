@@ -7,22 +7,28 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react";
 import { useCallback, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { DrawingCanvas } from "@/components/drawing-canvas";
-import { strokeToSvgPath, type Stroke } from "@/lib/drawing-utils";
+import {
+  strokeToSvgPath,
+  normalizeElements,
+  type CanvasElement,
+} from "@/lib/drawing-utils";
 
-function DrawingNodeView({ node, updateAttributes }: ReactNodeViewProps) {
+function DrawingNodeView({ node, updateAttributes, deleteNode }: ReactNodeViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const { width, height, strokes: strokesJson } = node.attrs as {
     width: number;
     height: number;
     strokes: string;
   };
-  const strokes: Stroke[] = JSON.parse(strokesJson || "[]");
+  const elements: CanvasElement[] = normalizeElements(
+    JSON.parse(strokesJson || "[]"),
+  );
 
   const handleSave = useCallback(
-    (newStrokes: Stroke[]) => {
-      updateAttributes({ strokes: JSON.stringify(newStrokes) });
+    (newElements: CanvasElement[]) => {
+      updateAttributes({ strokes: JSON.stringify(newElements) });
       setIsEditing(false);
     },
     [updateAttributes],
@@ -34,7 +40,7 @@ function DrawingNodeView({ node, updateAttributes }: ReactNodeViewProps) {
         <DrawingCanvas
           width={width}
           height={height}
-          initialStrokes={strokes}
+          initialStrokes={elements}
           onSave={handleSave}
           onCancel={() => setIsEditing(false)}
         />
@@ -54,17 +60,67 @@ function DrawingNodeView({ node, updateAttributes }: ReactNodeViewProps) {
           className="w-full border border-border rounded-lg bg-white"
           style={{ aspectRatio: `${width}/${height}` }}
         >
-          {strokes.map((stroke, i) => (
-            <path
-              key={i}
-              d={strokeToSvgPath(stroke)}
-              fill="none"
-              stroke={stroke.color}
-              strokeWidth={stroke.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
+          {elements.map((el, i) => {
+            if (el.kind === "stroke") {
+              return (
+                <path
+                  key={i}
+                  d={strokeToSvgPath(el)}
+                  fill="none"
+                  stroke={el.color}
+                  strokeWidth={el.width}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              );
+            }
+            if (el.kind === "rect") {
+              return (
+                <rect
+                  key={i}
+                  x={el.x}
+                  y={el.y}
+                  width={el.w}
+                  height={el.h}
+                  fill="none"
+                  stroke={el.color}
+                  strokeWidth={el.width}
+                />
+              );
+            }
+            if (el.kind === "circle") {
+              return (
+                <circle
+                  key={i}
+                  cx={el.cx}
+                  cy={el.cy}
+                  r={el.r}
+                  fill="none"
+                  stroke={el.color}
+                  strokeWidth={el.width}
+                />
+              );
+            }
+            if (el.kind === "text") {
+              return (
+                <text
+                  key={i}
+                  x={el.x + 4}
+                  y={el.y + el.fontSize}
+                  fill={el.color}
+                  fontSize={el.fontSize}
+                  fontFamily="sans-serif"
+                >
+                  {el.text.split("\n").map((line, li) => (
+                    <tspan key={li} x={el.x + 4} dy={li === 0 ? 0 : el.fontSize * 1.4}>
+                      {line}
+                    </tspan>
+                  ))}
+                </text>
+              );
+            }
+            return null;
+          })}
         </svg>
 
         <button
@@ -75,8 +131,16 @@ function DrawingNodeView({ node, updateAttributes }: ReactNodeViewProps) {
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
+        <button
+          type="button"
+          className="absolute top-2 right-11 h-7 w-7 rounded-md bg-background/80 border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-destructive/10 hover:text-destructive"
+          onClick={deleteNode}
+          title="Delete drawing"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
 
-        {strokes.length === 0 && (
+        {elements.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm pointer-events-none">
             Double-click to start drawing
           </div>
