@@ -54,13 +54,8 @@
   @apply my-4;
 }
 
-@media (max-width: 640px) {
-  .tiptap .drawing-block {
-    @apply -mx-8 w-[calc(100%+4rem)];
-  }
-  .tiptap .drawing-canvas-root {
-    @apply -mx-8 w-[calc(100%+4rem)];
-  }
+.tiptap .drawing-block [data-type="drawing"] {
+  @apply my-0;
 }
 
 @custom-variant dark (&:is(.dark *));
