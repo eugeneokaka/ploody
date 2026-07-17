@@ -30,8 +30,8 @@ import {
   PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
-import { UploadButton } from "@/lib/uploadthing";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { UploadButton, uploadFiles } from "@/lib/uploadthing";
 
 const fontFamilies = [
   { label: "Default", value: "var(--font-sans)" },
@@ -53,6 +53,8 @@ interface NoteEditorProps {
 
 export function NoteEditor({ content, onChange }: NoteEditorProps) {
   const [showColors, setShowColors] = useState(false);
+  const isSelfUpdate = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -76,6 +78,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     ],
     content: content ? JSON.parse(content) : undefined,
     onUpdate: ({ editor }) => {
+      isSelfUpdate.current = true;
       onChange?.(JSON.stringify(editor.getJSON()));
     },
     editorProps: {
@@ -87,12 +90,38 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     immediatelyRender: false,
   });
 
-  const addImage = useCallback(() => {
-    const url = window.prompt("Image URL:");
-    if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+  useEffect(() => {
+    if (!editor || !content) return;
+    if (isSelfUpdate.current) {
+      isSelfUpdate.current = false;
+      return;
     }
-  }, [editor]);
+    const currentJson = JSON.stringify(editor.getJSON());
+    if (currentJson !== content) {
+      editor.commands.setContent(JSON.parse(content));
+    }
+  }, [content, editor]);
+
+  const addImage = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !editor) return;
+
+      try {
+        const [res] = await uploadFiles("imageUploader", { files: [file] });
+        editor.chain().focus().setImage({ src: res.ufsUrl }).run();
+      } catch {
+        alert("Upload failed. Please try again.");
+      }
+
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    [editor]
+  );
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -296,6 +325,14 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
       </div>
 
       <EditorContent editor={editor} />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
     </div>
   );
 }

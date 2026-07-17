@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Pencil, FileText } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { FolderBar } from "@/components/folder-bar";
+import { FolderGrid } from "@/components/folder-grid";
 import { SearchBar } from "@/components/search";
 
 export default async function Home() {
@@ -18,23 +18,8 @@ export default async function Home() {
             <SearchBar />
           </div>
         </div>
-        <div className="border-b border-border">
-          <FolderBar />
-        </div>
-        <main className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-3 text-center px-4">
-            <FileText className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">
-              Select a folder or create a new note
-            </p>
-            <Link
-              href="/notes/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Note
-            </Link>
-          </div>
+        <main className="flex-1 overflow-y-auto">
+          <FolderGrid />
         </main>
       </div>
     );
@@ -68,12 +53,3 @@ export default async function Home() {
     </main>
   );
 }
-
-function Plus({ className }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" /><path d="M12 5v14" />
-    </svg>
-  );
-}
-

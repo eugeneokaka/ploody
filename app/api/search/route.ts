@@ -26,12 +26,13 @@ export async function GET(req: NextRequest) {
     log.info(`Searching`, { query, userId: session.user.id });
 
     const results = await prisma.$queryRaw<SearchResult[]>`
-      SELECT id, title, 'note'::text AS type, "folderId",
-             ts_rank("searchVector", plainto_tsquery('english', ${query})) AS rank,
-             ts_headline('english', coalesce(content, ''), plainto_tsquery('english', ${query}), 'MaxWords=12, MinWords=6') AS snippet
-      FROM note
-      WHERE "userId" = ${session.user.id}
-        AND "searchVector" @@ plainto_tsquery('english', ${query})
+      SELECT n.id, nv.title, 'note'::text AS type, n."folderId",
+             ts_rank(n."searchVector", plainto_tsquery('english', ${query})) AS rank,
+             ts_headline('english', nv.content, plainto_tsquery('english', ${query}), 'MaxWords=12, MinWords=6') AS snippet
+      FROM note n
+      JOIN note_version nv ON n."currentVersionId" = nv.id
+      WHERE n."userId" = ${session.user.id}
+        AND n."searchVector" @@ plainto_tsquery('english', ${query})
       UNION ALL
       SELECT id, name AS title, 'folder'::text AS type, NULL::text AS "folderId",
              ts_rank("searchVector", plainto_tsquery('english', ${query})) AS rank,

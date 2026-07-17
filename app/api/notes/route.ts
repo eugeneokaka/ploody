@@ -27,15 +27,25 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
-        title: true,
         folderId: true,
         updatedAt: true,
         createdAt: true,
+        currentVersion: {
+          select: { title: true },
+        },
       },
     });
 
-    log.info(`Returned ${notes.length} notes`, { folderId });
-    return NextResponse.json(notes);
+    const mapped = notes.map((n) => ({
+      id: n.id,
+      title: n.currentVersion?.title ?? "Untitled",
+      folderId: n.folderId,
+      updatedAt: n.updatedAt,
+      createdAt: n.createdAt,
+    }));
+
+    log.info(`Returned ${mapped.length} notes`, { folderId });
+    return NextResponse.json(mapped);
   } catch (e) {
     log.error("Failed to fetch notes", e);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,22 +55,42 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userId = await getUserId();
-    const { title, content, folderId } = await req.json();
+    const body = await req.json();
+    const { title, content, folderId, isPublic } = body;
 
-    log.info("Creating note", { title, folderId });
+    console.log("[POST /api/notes] body:", JSON.stringify(body, null, 2));
+    log.info("Creating note", { title, folderId, isPublic });
 
-    const note = await prisma.note.create({
-      data: {
-        title: title?.trim() || "Untitled",
-        content: content || "",
-        folderId: folderId || null,
-        userId,
-      },
+    const note = await prisma.$transaction(async (tx) => {
+      const created = await tx.note.create({
+        data: {
+          folderId: folderId || null,
+          isPublic: isPublic ?? false,
+          userId,
+        },
+      });
+
+      const version = await tx.noteVersion.create({
+        data: {
+          noteId: created.id,
+          version: 1,
+          title: title?.trim() || "Untitled",
+          content: content || "",
+        },
+      });
+
+      return tx.note.update({
+        where: { id: created.id },
+        data: { currentVersionId: version.id },
+        include: { currentVersion: true },
+      });
     });
 
+    console.log("[POST /api/notes] created:", JSON.stringify(note, null, 2));
     log.info(`Note created`, { id: note.id });
     return NextResponse.json(note);
   } catch (e) {
+    console.error("[POST /api/notes] error:", e);
     log.error("Failed to create note", e);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

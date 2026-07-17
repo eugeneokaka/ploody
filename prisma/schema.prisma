@@ -44,13 +44,20 @@ model Folder {
 }
 
 model Note {
-  id           String    @id @default(cuid())
-  title        String
-  content      String    @db.Text
-  folderId     String?
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  folder       Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  id       String @id @default(cuid())
+  userId   String
+  folderId String?
+
+  isPublic Boolean @default(false)
+
+  currentVersionId String? @unique
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  versions       NoteVersion[] @relation("NoteVersions")
+  currentVersion NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
   searchVector Unsupported("tsvector")?
 
   createdAt DateTime @default(now())
@@ -58,7 +65,27 @@ model Note {
 
   @@index([userId])
   @@index([folderId])
+  @@index([currentVersionId])
   @@map("note")
+}
+
+model NoteVersion {
+  id      String @id @default(cuid())
+  noteId  String
+  version Int
+  label   String?
+  title   String
+  content String @db.Text
+
+  note          Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
+  currentForNote Note? @relation("CurrentVersion")
+
+  createdAt DateTime @default(now())
+
+  @@unique([noteId, version])
+  @@index([noteId])
+  @@index([noteId, createdAt])
+  @@map("note_version")
 }
 
 model Session {

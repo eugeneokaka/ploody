@@ -23,7 +23,11 @@ export default async function FolderPage({ params }: Props) {
     include: {
       notes: {
         orderBy: { updatedAt: "desc" },
-        select: { id: true, title: true, updatedAt: true },
+        select: {
+          id: true,
+          updatedAt: true,
+          currentVersion: { select: { title: true } },
+        },
       },
       children: {
         orderBy: { name: "asc" },
@@ -112,7 +116,7 @@ export default async function FolderPage({ params }: Props) {
                   className="flex items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:bg-muted"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 font-medium">{note.title || "Untitled"}</span>
+                  <span className="flex-1 font-medium">{note.currentVersion?.title || "Untitled"}</span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(note.updatedAt).toLocaleDateString()}
                   </span>
