@@ -76,6 +76,7 @@ function CommentList({ noteId, authorId }: { noteId: string; authorId: string })
   const { publish } = useChannel(`note:${noteId}:comments`, (message) => {
     if (message.name === "new") {
       const newComment = message.data as Comment;
+      if (newComment.authorId === userId) return;
       setComments((prev) => {
         if (prev.some((c) => c.id === newComment.id)) return prev;
         return [...prev, newComment];
