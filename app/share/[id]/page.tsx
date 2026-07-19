@@ -5,11 +5,12 @@ import { useParams } from "next/navigation";
 import { FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { renderContent } from "@/lib/render-content";
+import { CommentSection } from "@/components/comment-section";
 
 export default function SharePage() {
   const params = useParams();
   const id = params.id as string;
-  const [note, setNote] = useState<{ title: string; content: string } | null>(null);
+  const [note, setNote] = useState<{ title: string; content: string; userId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -75,6 +76,9 @@ export default function SharePage() {
           className="tiptap focus:outline-none"
           dangerouslySetInnerHTML={{ __html: renderContent(note.content) }}
         />
+      </div>
+      <div className="border-t border-border">
+        <CommentSection noteId={id} authorId={note.userId} />
       </div>
     </div>
   );

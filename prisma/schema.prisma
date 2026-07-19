@@ -19,6 +19,7 @@ model User {
   accounts      Account[]
   folders       Folder[]
   notes         Note[]
+  comments      Comment[]
 
   @@unique([email])
   @@map("user")
@@ -57,6 +58,7 @@ model Note {
 
   versions       NoteVersion[] @relation("NoteVersions")
   currentVersion NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  comments       Comment[]
 
   searchVector Unsupported("tsvector")?
 
@@ -67,6 +69,22 @@ model Note {
   @@index([folderId])
   @@index([currentVersionId])
   @@map("note")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  noteId    String
+  authorId  String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([noteId])
+  @@index([authorId])
+  @@index([noteId, createdAt])
+  @@map("comment")
 }
 
 model NoteVersion {

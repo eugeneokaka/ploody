@@ -9,6 +9,7 @@ import { NoteEditor } from "@/components/note-editor";
 import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/folder-picker";
 import { VersionPanel } from "@/components/version-panel";
+import { CommentSection } from "@/components/comment-section";
 
 export default function NotePage() {
   const params = useParams();
@@ -21,6 +22,7 @@ export default function NotePage() {
   const [folderName, setFolderName] = useState<string | undefined>();
   const [isPublic, setIsPublic] = useState(false);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  const [noteUserId, setNoteUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -48,6 +50,7 @@ export default function NotePage() {
         setFolderName(note.folder?.name);
         setIsPublic(note.isPublic);
         setCurrentVersionId(newVersionId);
+        setNoteUserId(note.userId);
         setEditorKey((k) => k + 1);
         setLoading(false);
         setReloading(false);
@@ -118,7 +121,7 @@ export default function NotePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col overflow-y-auto">
       <div className="flex items-center gap-3 border-b border-border px-6 py-3">
         <Link
           href={folderId ? `/folders/${folderId}` : "/"}
@@ -195,7 +198,7 @@ export default function NotePage() {
         </button>
       </div>
 
-      <div className={`flex-1 relative ${editingVersion ? "animate-editor-switch" : ""}`}>
+      <div className={`flex-1 relative min-h-[60vh] ${editingVersion ? "animate-editor-switch" : ""}`}>
         {reloading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm transition-opacity">
             <div className="flex items-center gap-2 rounded-lg bg-popover px-4 py-2 shadow-lg border border-border">
@@ -206,6 +209,12 @@ export default function NotePage() {
         )}
         <NoteEditor key={`${id}-v${editorKey}`} content={content} onChange={setContent} />
       </div>
+
+      {isPublic && noteUserId && (
+        <div className="border-t border-border">
+          <CommentSection noteId={id} authorId={noteUserId} />
+        </div>
+      )}
 
       {showVersions && (
         <VersionPanel

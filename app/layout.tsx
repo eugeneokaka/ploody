@@ -4,6 +4,7 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "@/app/api/uploadthing/core";
 import { Navbar } from "@/components/navbar";
+import { AblyProviderWrapper } from "@/components/ably-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -41,7 +42,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <Navbar />
-        {children}
+        <AblyProviderWrapper>{children}</AblyProviderWrapper>
         <Toaster />
       </body>
     </html>

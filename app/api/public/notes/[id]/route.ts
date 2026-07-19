@@ -15,6 +15,7 @@ export async function GET(
       where: { id, isPublic: true },
       select: {
         id: true,
+        userId: true,
         updatedAt: true,
         currentVersion: { select: { title: true, content: true } },
       },
@@ -26,6 +27,7 @@ export async function GET(
 
     return NextResponse.json({
       id: note.id,
+      userId: note.userId,
       title: note.currentVersion?.title ?? "Untitled",
       content: note.currentVersion?.content ?? "",
       updatedAt: note.updatedAt,
