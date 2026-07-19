@@ -23,6 +23,8 @@ export async function GET() {
 
     return NextResponse.json(tokenDetails);
   } catch (e) {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("[ably/token] error:", e);
+    const message = e instanceof Error ? e.message : "Internal error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

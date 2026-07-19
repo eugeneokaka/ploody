@@ -40,7 +40,9 @@ export async function GET(
   } catch (e) {
     console.error("[GET /api/notes/:id] error:", e);
     log.error("Failed to fetch note", e);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const isAuth = message === "Unauthorized";
+    return NextResponse.json({ error: message }, { status: isAuth ? 401 : 500 });
   }
 }
 
@@ -92,7 +94,9 @@ export async function PATCH(
   } catch (e) {
     console.error("[PATCH /api/notes/:id] error:", e);
     log.error("Failed to update note", e);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const isAuth = message === "Unauthorized";
+    return NextResponse.json({ error: message }, { status: isAuth ? 401 : 500 });
   }
 }
 
@@ -110,6 +114,8 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (e) {
     log.error("Failed to delete note", e);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const isAuth = message === "Unauthorized";
+    return NextResponse.json({ error: message }, { status: isAuth ? 401 : 500 });
   }
 }

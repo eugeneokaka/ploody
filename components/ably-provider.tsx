@@ -4,7 +4,7 @@ import * as Ably from "ably";
 import { AblyProvider } from "ably/react";
 
 const realtimeClient = new Ably.Realtime({
-  authUrl: "api/ably/token",
+  authUrl: "/api/ably/token",
 });
 
 export function AblyProviderWrapper({ children }: { children: React.ReactNode }) {
