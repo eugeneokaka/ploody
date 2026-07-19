@@ -35,7 +35,7 @@ export async function DELETE(
     await prisma.comment.delete({ where: { id: commentId } });
 
     const ably = getAblyRest();
-    ably.channels.get(`note:${id}:comments`).publish("deleted", { id: commentId });
+    await ably.channels.get(`note:${id}:comments`).publish("deleted", { id: commentId });
 
     return NextResponse.json({ success: true });
   } catch {

@@ -88,7 +88,7 @@ export async function POST(
     });
 
     const ably = getAblyRest();
-    ably.channels.get(`note:${id}:comments`).publish("new", comment);
+    await ably.channels.get(`note:${id}:comments`).publish("new", comment);
 
     return NextResponse.json(comment);
   } catch {
