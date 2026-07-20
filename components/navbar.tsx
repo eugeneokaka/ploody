@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Pencil, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Pencil, LogOut, Globe, LayoutDashboard } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -18,6 +19,7 @@ import {
 export function Navbar() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -42,6 +44,32 @@ export function Navbar() {
         </Link>
 
         <div className="flex-1" />
+
+        <Link
+          href="/explore"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            pathname === "/explore"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <Globe className="h-4 w-4" />
+          <span className="hidden sm:inline">Explore</span>
+        </Link>
+
+        <Link
+          href="/dashboard"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            pathname === "/dashboard"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          <span className="hidden sm:inline">Dashboard</span>
+        </Link>
 
         <div className="flex items-center gap-3 shrink-0">
           {isPending ? (

@@ -18,6 +18,7 @@ export async function GET(
         userId: true,
         updatedAt: true,
         currentVersion: { select: { title: true, content: true } },
+        user: { select: { name: true } },
       },
     });
 
@@ -28,6 +29,7 @@ export async function GET(
     return NextResponse.json({
       id: note.id,
       userId: note.userId,
+      authorName: note.user.name,
       title: note.currentVersion?.title ?? "Untitled",
       content: note.currentVersion?.content ?? "",
       updatedAt: note.updatedAt,

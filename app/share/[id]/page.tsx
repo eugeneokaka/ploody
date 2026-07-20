@@ -1,18 +1,38 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { FileText, ExternalLink } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { FileText, ExternalLink, BookmarkPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { renderContent } from "@/lib/render-content";
 import { CommentSection } from "@/components/comment-section";
+import { useSession } from "@/lib/auth-client";
 
 export default function SharePage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
-  const [note, setNote] = useState<{ title: string; content: string; userId: string } | null>(null);
+  const { data: session } = useSession();
+  const [note, setNote] = useState<{ title: string; content: string; userId: string; authorName?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [copying, setCopying] = useState(false);
+
+  async function handleCopy() {
+    setCopying(true);
+    try {
+      const res = await fetch(`/api/notes/copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noteId: id }),
+      });
+      if (!res.ok) throw new Error("Failed to copy");
+      const data = await res.json();
+      router.push(`/notes/${data.id}`);
+    } catch {
+      setCopying(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/public/notes/${id}`)
@@ -62,6 +82,25 @@ export default function SharePage() {
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-3">
           <FileText className="h-5 w-5 text-muted-foreground" />
           <h1 className="flex-1 text-lg font-semibold">{note.title || "Untitled"}</h1>
+          {note.authorName && (
+            <span className="text-xs text-muted-foreground">
+              by {note.authorName}
+            </span>
+          )}
+          {session?.user && (
+            <button
+              onClick={handleCopy}
+              disabled={copying}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+            >
+              {copying ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <BookmarkPlus className="h-3.5 w-3.5" />
+              )}
+              {copying ? "Copying..." : "Copy to my notes"}
+            </button>
+          )}
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

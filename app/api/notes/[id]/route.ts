@@ -28,6 +28,12 @@ export async function GET(
       include: {
         folder: { select: { id: true, name: true } },
         currentVersion: true,
+        copiedFrom: {
+          select: {
+            currentVersion: { select: { title: true } },
+            user: { select: { name: true } },
+          },
+        },
       },
     });
     console.log("[GET /api/notes/:id] result:", note ? `found note "${note.currentVersion?.title}"` : "NOT FOUND");

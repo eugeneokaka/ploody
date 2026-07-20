@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { NoteEditor } from "@/components/note-editor";
@@ -23,6 +23,8 @@ export default function NotePage() {
   const [isPublic, setIsPublic] = useState(false);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [noteUserId, setNoteUserId] = useState<string | null>(null);
+  const [copiedFromAuthor, setCopiedFromAuthor] = useState<string | null>(null);
+  const [copiedFromTitle, setCopiedFromTitle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -51,6 +53,8 @@ export default function NotePage() {
         setIsPublic(note.isPublic);
         setCurrentVersionId(newVersionId);
         setNoteUserId(note.userId);
+        setCopiedFromAuthor(note.copiedFrom?.user?.name ?? null);
+        setCopiedFromTitle(note.copiedFrom?.currentVersion?.title ?? null);
         setEditorKey((k) => k + 1);
         setLoading(false);
         setReloading(false);
@@ -139,6 +143,21 @@ export default function NotePage() {
             setFolderName(newFolderName);
           }}
         />
+        {copiedFromAuthor && (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 text-xs">
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20">
+              <BookmarkPlus className="h-2.5 w-2.5 text-blue-500" />
+            </div>
+            <span className="text-muted-foreground">Copied from</span>
+            <span className="font-medium text-blue-600 dark:text-blue-400">{copiedFromAuthor}</span>
+            {copiedFromTitle && (
+              <>
+                <span className="text-muted-foreground/60">|</span>
+                <span className="truncate max-w-36 text-muted-foreground">{copiedFromTitle}</span>
+              </>
+            )}
+          </div>
+        )}
         <div className="h-6 w-px bg-border" />
         <Input
           value={title}
