@@ -28,10 +28,18 @@ import {
   Pilcrow,
   RemoveFormatting,
   PenLine,
+  Search,
+  ListTree,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Eraser,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UploadButton, uploadFiles } from "@/lib/uploadthing";
+import { ChapterPanel, type HeadingItem } from "@/components/chapter-panel";
+import { toast } from "sonner";
 
 const fontFamilies = [
   { label: "Default", value: "var(--font-sans)" },
@@ -53,8 +61,15 @@ interface NoteEditorProps {
 
 export function NoteEditor({ content, onChange }: NoteEditorProps) {
   const [showColors, setShowColors] = useState(false);
+  const [showFind, setShowFind] = useState(false);
+  const [showChapters, setShowChapters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentMatch, setCurrentMatch] = useState(0);
+  const [headings, setHeadings] = useState<HeadingItem[]>([]);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const isSelfUpdate = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const findInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -86,6 +101,39 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
         class:
           "tiptap focus:outline-none min-h-[400px] max-w-3xl mx-auto px-8 py-6",
       },
+      handlePaste: (_view, _event, slice) => {
+        let emptyCount = 0;
+        slice.content.descendants((node) => {
+          if (
+            (node.type.name === "paragraph" ||
+              node.type.name === "codeBlock") &&
+            node.textContent.trim().length === 0
+          ) {
+            emptyCount++;
+          }
+        });
+        if (emptyCount > 0) {
+          toast.info(
+            `Pasted content has ${emptyCount} blank ${emptyCount === 1 ? "line" : "lines"}. Use the Strip button to remove them.`,
+            { duration: 5000, position: "top-center" }
+          );
+        }
+        return false;
+      },
+      transformPastedHTML: (html: string) => {
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        doc.querySelectorAll("pre").forEach((pre) => {
+          pre.innerHTML = pre.innerHTML.trim();
+
+          const code = pre.querySelector("code");
+          if (code) {
+            code.textContent = (code.textContent ?? "").replace(/\n+$/, "");
+          }
+        });
+
+        return doc.body.innerHTML;
+      },
     },
     immediatelyRender: false,
   });
@@ -101,6 +149,187 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
       editor.commands.setContent(JSON.parse(content));
     }
   }, [content, editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateHeadings = () => {
+      const items: HeadingItem[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "heading") {
+          items.push({
+            id: `h-${pos}`,
+            level: node.attrs.level,
+            text: node.textContent,
+            pos,
+          });
+        }
+      });
+      setHeadings(items);
+
+      const cursorPos = editor.state.selection.from;
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].pos <= cursorPos) {
+          setActiveHeadingId(items[i].id);
+          return;
+        }
+      }
+      setActiveHeadingId(items.length > 0 ? items[0].id : null);
+    };
+
+    editor.on("update", updateHeadings);
+    editor.on("selectionUpdate", updateHeadings);
+    updateHeadings();
+
+    return () => {
+      editor.off("update", updateHeadings);
+      editor.off("selectionUpdate", updateHeadings);
+    };
+  }, [editor]);
+
+  const findMatches = useMemo(() => {
+    if (!editor || !searchQuery) return [];
+    const results: {
+      from: number;
+      to: number;
+      before: string;
+      matchText: string;
+      after: string;
+    }[] = [];
+    const queryLower = searchQuery.toLowerCase();
+    const doc = editor.state.doc;
+    const CONTEXT = 30;
+
+    doc.descendants((node, pos) => {
+      if (node.isText) {
+        const text = node.text ?? "";
+        const textLower = text.toLowerCase();
+        let start = 0;
+        while ((start = textLower.indexOf(queryLower, start)) !== -1) {
+          const from = pos + 1 + start;
+          const to = from + searchQuery.length;
+          const contextStart = Math.max(0, from - 1 - CONTEXT);
+          const contextEnd = Math.min(doc.content.size, to - 1 + CONTEXT);
+          const before = doc
+            .textBetween(contextStart, from - 1, " ", " ")
+            .replace(/\n/g, " ")
+            .trimStart();
+          const after = doc
+            .textBetween(to - 1, contextEnd, " ", " ")
+            .replace(/\n/g, " ")
+            .trimEnd();
+          results.push({
+            from,
+            to,
+            before,
+            matchText: text.substring(start, start + searchQuery.length),
+            after,
+          });
+          start += searchQuery.length;
+        }
+      }
+    });
+    return results;
+  }, [editor, searchQuery]);
+
+  const scrollToPosition = useCallback(
+    (pos: number) => {
+      if (!editor) return;
+      try {
+        const resolved = editor.view.domAtPos(pos);
+        const el =
+          resolved.node instanceof HTMLElement
+            ? resolved.node
+            : resolved.node.parentElement;
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {
+        // position may be invalid after doc changes
+      }
+    },
+    [editor]
+  );
+
+  const navigateToMatch = useCallback(
+    (index: number) => {
+      if (findMatches.length === 0) return;
+      const i = ((index % findMatches.length) + findMatches.length) % findMatches.length;
+      setCurrentMatch(i);
+      scrollToPosition(findMatches[i].from);
+    },
+    [findMatches, scrollToPosition]
+  );
+
+  useEffect(() => {
+    if (searchQuery && findMatches.length > 0) {
+      setCurrentMatch(0);
+      scrollToPosition(findMatches[0].from);
+    }
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowFind(true);
+        setTimeout(() => findInputRef.current?.focus(), 0);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleFindKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      navigateToMatch(
+        e.shiftKey ? currentMatch - 1 : currentMatch + 1
+      );
+    }
+    if (e.key === "Escape") {
+      setShowFind(false);
+      setSearchQuery("");
+      editor?.commands.focus();
+    }
+  };
+
+  const closeFind = () => {
+    setShowFind(false);
+    setSearchQuery("");
+    editor?.commands.focus();
+  };
+
+  const stripBlankLines = useCallback(() => {
+    if (!editor) return;
+    const { state, view } = editor;
+    const tr = state.tr;
+
+    const toRemove: { from: number; to: number }[] = [];
+
+    state.doc.descendants((node, pos) => {
+      if (
+        node.type.name === "paragraph" ||
+        node.type.name === "codeBlock"
+      ) {
+        if (node.textContent.trim().length === 0) {
+          toRemove.push({ from: pos, to: pos + node.nodeSize });
+        }
+      }
+    });
+
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      tr.delete(toRemove[i].from, toRemove[i].to);
+    }
+
+    if (tr.steps.length > 0) {
+      view.dispatch(tr);
+    }
+  }, [editor]);
+
+  const handleStrip = useCallback(() => {
+    if (!editor) return;
+    if (!window.confirm("This will remove all blank lines and empty code blocks from the document. Continue?")) return;
+    stripBlankLines();
+  }, [editor, stripBlankLines]);
 
   const addImage = useCallback(() => {
     fileInputRef.current?.click();
@@ -321,7 +550,114 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
               }}
             />
           </div>
+
+          <div className="mx-1 h-5 w-px bg-border" />
+
+          <button
+            type="button"
+            onClick={handleStrip}
+            title="Remove blank lines and empty code blocks"
+            className="inline-flex items-center gap-1.5 h-7 rounded-md px-2 text-xs font-medium bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          >
+            <Eraser className="h-3.5 w-3.5" />
+            Strip
+          </button>
+
+          <div className="mx-1 h-5 w-px bg-border" />
+
+          <ToolbarButton
+            onClick={() => {
+              setShowFind(!showFind);
+              if (!showFind) setTimeout(() => findInputRef.current?.focus(), 0);
+            }}
+            active={showFind}
+            title="Find in note (Ctrl+F)"
+          >
+            <Search className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setShowChapters(!showChapters)}
+            active={showChapters}
+            title="Chapters outline"
+          >
+            <ListTree className="h-4 w-4" />
+          </ToolbarButton>
         </div>
+
+        {showFind && (
+          <div className="relative border-t border-border">
+            <div className="flex items-center gap-2 px-4 py-1.5">
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <input
+                ref={findInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleFindKeyDown}
+                placeholder="Find in note..."
+                className="flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+              />
+              {searchQuery && (
+                <>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {findMatches.length > 0 ? currentMatch + 1 : 0}/{findMatches.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigateToMatch(currentMatch - 1)}
+                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateToMatch(currentMatch + 1)}
+                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={closeFind}
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {searchQuery && findMatches.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border-t border-border">
+                {findMatches.map((match, i) => (
+                  <button
+                    key={`${match.from}-${match.to}`}
+                    type="button"
+                    onClick={() => navigateToMatch(i)}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-4 py-1.5 text-left text-xs transition-colors hover:bg-muted",
+                      i === currentMatch && "bg-muted"
+                    )}
+                  >
+                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/50">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      <span className="text-muted-foreground/60">
+                        {match.before}
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {match.matchText}
+                      </span>
+                      <span className="text-muted-foreground/60">
+                        {match.after}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <EditorContent editor={editor} />
@@ -333,6 +669,15 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
         className="hidden"
         onChange={handleImageUpload}
       />
+
+      {showChapters && (
+        <ChapterPanel
+          editor={editor}
+          headings={headings}
+          activeHeadingId={activeHeadingId}
+          onClose={() => setShowChapters(false)}
+        />
+      )}
     </div>
   );
 }

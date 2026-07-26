@@ -125,7 +125,7 @@ export default function NotePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
+    <div className="flex flex-1 flex-col">
       <div className="flex items-center gap-3 border-b border-border px-6 py-3">
         <Link
           href={folderId ? `/folders/${folderId}` : "/"}
