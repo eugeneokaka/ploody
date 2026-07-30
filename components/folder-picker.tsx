@@ -49,11 +49,11 @@ export function FolderPicker({
   const loadFolders = useCallback(async (parentId?: string) => {
     try {
       const params = parentId ? `?parentId=${parentId}` : "";
-      const data = await api(`/api/folders${params}`);
+      const { folders } = await api(`/api/folders${params}`);
       if (parentId) {
-        setSubFolders((prev) => ({ ...prev, [parentId]: data }));
+        setSubFolders((prev) => ({ ...prev, [parentId]: folders }));
       } else {
-        setRootFolders(data);
+        setRootFolders(folders);
       }
     } catch {
       // silent

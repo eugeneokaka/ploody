@@ -3,14 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Folder as FolderIcon, Plus, FileText, FolderPlus } from "lucide-react";
+import { Folder as FolderIcon, Plus, FileText, FolderPlus, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface FolderItem {
   id: string;
   name: string;
+  createdAt: string;
   _count: { notes: number; children: number };
 }
+
+const PAGE_SIZE = 6;
 
 async function api(url: string, options?: RequestInit) {
   const res = await fetch(url, {
@@ -25,22 +28,39 @@ export function FolderGrid() {
   const router = useRouter();
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [name, setName] = useState("");
   const initialized = useRef(false);
 
-  const loadFolders = useCallback(async () => {
-    const data = await api("/api/folders");
+  const loadInitial = useCallback(async () => {
+    const { folders: data, hasMore: more } = await api(
+      `/api/folders?limit=${PAGE_SIZE}`
+    );
     setFolders(data);
+    setHasMore(more);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
-      loadFolders();
+      loadInitial();
     }
-  }, [loadFolders]);
+  }, [loadInitial]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !folders.length) return;
+    setLoadingMore(true);
+    const last = folders[folders.length - 1];
+    const { folders: data, hasMore: more } = await api(
+      `/api/folders?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(last.createdAt)}`
+    );
+    setFolders((prev) => [...prev, ...data]);
+    setHasMore(more);
+    setLoadingMore(false);
+  }, [folders, loadingMore]);
 
   async function handleCreate() {
     if (!name.trim()) {
@@ -53,7 +73,7 @@ export function FolderGrid() {
     });
     setName("");
     setShowInput(false);
-    await loadFolders();
+    await loadInitial();
   }
 
   if (loading) {
@@ -109,32 +129,53 @@ export function FolderGrid() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {folders.map((folder) => {
-            const itemCount = folder._count.notes + folder._count.children;
-            return (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {folders.map((folder) => {
+              const itemCount = folder._count.notes + folder._count.children;
+              return (
+                <button
+                  key={folder.id}
+                  onClick={() => router.push(`/folders/${folder.id}`)}
+                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                    <FolderIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium truncate">
+                      {folder.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {itemCount === 0
+                        ? "Empty"
+                        : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {hasMore && (
+            <div className="mt-4 flex justify-center">
               <button
-                key={folder.id}
-                onClick={() => router.push(`/folders/${folder.id}`)}
-                className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                  <FolderIcon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium truncate">
-                    {folder.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {itemCount === 0
-                      ? "Empty"
-                      : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
-                  </p>
-                </div>
+                {loadingMore ? (
+                  "Loading..."
+                ) : (
+                  <>
+                    Show more
+                    <ChevronDown className="h-4 w-4" />
+                  </>
+                )}
               </button>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {folders.length > 0 && (

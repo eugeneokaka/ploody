@@ -52,11 +52,11 @@ export function FolderSidebar() {
 
   const loadFolders = useCallback(async (parentId?: string) => {
     const params = parentId ? `?parentId=${parentId}` : "";
-    const data = await api(`/api/folders${params}`);
+    const { folders } = await api(`/api/folders${params}`);
     if (parentId) {
-      setSubFolders((prev) => ({ ...prev, [parentId]: data }));
+      setSubFolders((prev) => ({ ...prev, [parentId]: folders }));
     } else {
-      setFolders(data);
+      setFolders(folders);
     }
     setLoading(false);
   }, []);

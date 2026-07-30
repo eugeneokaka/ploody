@@ -30,8 +30,8 @@ export function FolderBar() {
   const initialized = useRef(false);
 
   const loadFolders = useCallback(async () => {
-    const data = await api("/api/folders");
-    setFolders(data);
+    const { folders } = await api("/api/folders");
+    setFolders(folders);
     setLoading(false);
   }, []);
 

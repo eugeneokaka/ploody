@@ -18,17 +18,33 @@ export async function GET(req: NextRequest) {
   try {
     const userId = await getUserId();
     const parentId = req.nextUrl.searchParams.get("parentId") || null;
+    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "0");
 
-    log.info("Listing folders", { parentId, userId });
+    log.info("Listing folders", { parentId, userId, cursor, limit });
+
+    const where: Record<string, unknown> = { userId, parentId };
+    if (cursor) {
+      where.createdAt = { gt: new Date(cursor) };
+    }
+
+    const take = limit > 0 ? limit + 1 : undefined;
 
     const folders = await prisma.folder.findMany({
-      where: { userId, parentId },
+      where,
       include: { _count: { select: { notes: true, children: true } } },
       orderBy: { createdAt: "asc" },
+      take,
     });
 
+    let hasMore = false;
+    if (limit > 0) {
+      hasMore = folders.length > limit;
+      if (hasMore) folders.pop();
+    }
+
     log.info(`Returned ${folders.length} folders`);
-    return NextResponse.json(folders);
+    return NextResponse.json({ folders, hasMore });
   } catch (e) {
     log.error("Failed to fetch folders", e);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
