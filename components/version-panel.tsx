@@ -129,7 +129,7 @@ export function VersionPanel({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-80 flex-col border-l border-border bg-background shadow-lg">
+    <div className="fixed inset-y-0 right-0 z-50 flex w-full sm:w-80 flex-col border-l border-border bg-background shadow-lg">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <History className="h-4 w-4 text-muted-foreground" />
         <span className="flex-1 text-sm font-semibold">Versions</span>

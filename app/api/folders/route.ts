@@ -17,13 +17,16 @@ async function getUserId() {
 export async function GET(req: NextRequest) {
   try {
     const userId = await getUserId();
-    const parentId = req.nextUrl.searchParams.get("parentId") || null;
+    const parentIdParam = req.nextUrl.searchParams.get("parentId");
     const cursor = req.nextUrl.searchParams.get("cursor");
     const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "0");
 
-    log.info("Listing folders", { parentId, userId, cursor, limit });
+    log.info("Listing folders", { parentId: parentIdParam, userId, cursor, limit });
 
-    const where: Record<string, unknown> = { userId, parentId };
+    const where: Record<string, unknown> = { userId };
+    if (parentIdParam !== null) {
+      where.parentId = parentIdParam || null;
+    }
     if (cursor) {
       where.createdAt = { gt: new Date(cursor) };
     }
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "asc" },
       take,
     });
+    console.log(folders);
 
     let hasMore = false;
     if (limit > 0) {

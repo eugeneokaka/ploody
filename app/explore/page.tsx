@@ -46,7 +46,7 @@ export default function ExplorePage() {
   }, [query, search]);
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col px-6 py-10">
+    <main className="mx-auto flex max-w-2xl flex-col px-4 sm:px-6 py-6 sm:py-10">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold tracking-tight">Explore</h1>
         <p className="mt-2 text-muted-foreground">

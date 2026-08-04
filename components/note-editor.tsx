@@ -8,6 +8,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import ImageExtension from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { DrawingExtension } from "@/lib/drawing-extension";
+import { YoutubeExtension, extractYoutubeId } from "@/lib/youtube-extension";
 import {
   Bold,
   Italic,
@@ -34,10 +35,12 @@ import {
   ChevronDown,
   X,
   Eraser,
+  Video,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { UploadButton, uploadFiles } from "@/lib/uploadthing";
+import { uploadFiles } from "@/lib/uploadthing";
 import { ChapterPanel, type HeadingItem } from "@/components/chapter-panel";
 import { toast } from "sonner";
 
@@ -90,6 +93,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
         placeholder: "Start writing...",
       }),
       DrawingExtension,
+      YoutubeExtension,
     ],
     content: content ? JSON.parse(content) : undefined,
     onUpdate: ({ editor }) => {
@@ -99,9 +103,25 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     editorProps: {
       attributes: {
         class:
-          "tiptap focus:outline-none min-h-[400px] max-w-3xl mx-auto px-8 py-6",
+          "tiptap focus:outline-none min-h-[400px] max-w-3xl mx-auto px-4 sm:px-8 py-6",
       },
-      handlePaste: (_view, _event, slice) => {
+      handlePaste: (_view, event, slice) => {
+        const plainText = event.clipboardData?.getData("text/plain")?.trim();
+        if (plainText && extractYoutubeId(plainText)) {
+          const { tr } = _view.state;
+          _view.dispatch(
+            tr
+              .replaceSelectionWith(
+                _view.state.schema.nodes.youtube.create({
+                  url: plainText,
+                  videoId: extractYoutubeId(plainText),
+                })
+              )
+              .scrollIntoView()
+          );
+          return true;
+        }
+
         let emptyCount = 0;
         slice.content.descendants((node) => {
           if (
@@ -364,12 +384,31 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     }
   }, [editor]);
 
+  const addYoutube = useCallback(() => {
+    if (!editor) return;
+    const url = window.prompt("Enter YouTube URL:");
+    if (!url) return;
+    const videoId = extractYoutubeId(url.trim());
+    if (!videoId) {
+      alert("Invalid YouTube URL");
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "youtube",
+        attrs: { url: url.trim(), videoId },
+      })
+      .run();
+  }, [editor]);
+
   if (!editor) return null;
 
   return (
     <div className="flex flex-col">
       <div className="sticky top-14 z-40 border-b border-border bg-background">
-        <div className="flex flex-wrap items-center gap-1 px-4 py-2">
+        <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1.5 sm:py-2">
           <div className="flex items-center gap-0.5 border-r border-border pr-2 mr-2">
             <ToolbarButton
               onClick={() => editor.chain().focus().undo().run()}
@@ -389,26 +428,26 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive("heading", { level: 1 })}
           >
-            <Heading1 className="h-4 w-4" />
+            <Heading1 className="h-4 w-4 text-amber-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive("heading", { level: 2 })}
           >
-            <Heading2 className="h-4 w-4" />
+            <Heading2 className="h-4 w-4 text-amber-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             active={editor.isActive("heading", { level: 3 })}
           >
-            <Heading3 className="h-4 w-4" />
+            <Heading3 className="h-4 w-4 text-amber-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().setParagraph().run()}
             active={editor.isActive("paragraph")}
             title="Paragraph"
           >
-            <Pilcrow className="h-4 w-4" />
+            <Pilcrow className="h-4 w-4 text-amber-400" />
           </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
@@ -417,25 +456,25 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
           >
-            <Bold className="h-4 w-4" />
+            <Bold className="h-4 w-4 text-sky-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive("italic")}
           >
-            <Italic className="h-4 w-4" />
+            <Italic className="h-4 w-4 text-sky-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive("underline")}
           >
-            <UnderlineIcon className="h-4 w-4" />
+            <UnderlineIcon className="h-4 w-4 text-sky-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleStrike().run()}
             active={editor.isActive("strike")}
           >
-            <Strikethrough className="h-4 w-4" />
+            <Strikethrough className="h-4 w-4 text-sky-400" />
           </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
@@ -481,25 +520,25 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
           >
-            <List className="h-4 w-4" />
+            <List className="h-4 w-4 text-emerald-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive("orderedList")}
           >
-            <ListOrdered className="h-4 w-4" />
+            <ListOrdered className="h-4 w-4 text-emerald-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive("blockquote")}
           >
-            <Quote className="h-4 w-4" />
+            <Quote className="h-4 w-4 text-emerald-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
             active={editor.isActive("codeBlock")}
           >
-            <Code className="h-4 w-4" />
+            <Code className="h-4 w-4 text-emerald-400" />
           </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
@@ -516,10 +555,10 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
           <div className="mx-1 h-5 w-px bg-border" />
 
           <ToolbarButton onClick={setLink} active={editor.isActive("link")}>
-            <Link2 className="h-4 w-4" />
+            <Link2 className="h-4 w-4 text-blue-400" />
           </ToolbarButton>
           <ToolbarButton onClick={addImage}>
-            <Image className="h-4 w-4" />
+            <Image className="h-4 w-4 text-emerald-400" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() =>
@@ -527,29 +566,17 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
             }
             title="Add drawing"
           >
-            <PenLine className="h-4 w-4" />
+            <PenLine className="h-4 w-4 text-violet-400" />
+          </ToolbarButton>
+          <ToolbarButton onClick={addYoutube} title="Add YouTube video">
+            <Video className="h-4 w-4 text-red-400" />
           </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
 
-          <div className="flex items-center gap-1">
-            <UploadButton
-              endpoint="imageUploader"
-              onClientUploadComplete={(res) => {
-                if (res?.[0]?.url) {
-                  editor.chain().focus().setImage({ src: res[0].url }).run();
-                }
-              }}
-              onUploadError={(error: Error) => {
-                alert(`Upload failed: ${error.message}`);
-              }}
-              appearance={{
-                button:
-                  "inline-flex items-center gap-1.5 h-7 rounded-md px-2 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors border-0 cursor-pointer",
-                allowedContent: "hidden",
-              }}
-            />
-          </div>
+          <ToolbarButton onClick={addImage} title="Upload image">
+            <Upload className="h-4 w-4 text-indigo-400" />
+          </ToolbarButton>
 
           <div className="mx-1 h-5 w-px bg-border" />
 
@@ -559,8 +586,8 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
             title="Remove blank lines and empty code blocks"
             className="inline-flex items-center gap-1.5 h-7 rounded-md px-2 text-xs font-medium bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
           >
-            <Eraser className="h-3.5 w-3.5" />
-            Strip
+            <Eraser className="h-3.5 w-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Strip</span>
           </button>
 
           <div className="mx-1 h-5 w-px bg-border" />

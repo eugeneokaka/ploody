@@ -31,6 +31,11 @@ function renderDrawing(strokes?: string): string {
   }
 }
 
+function renderYoutube(videoId?: string): string {
+  if (!videoId) return "";
+  return `<div class="youtube-block"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:0.5rem;border:1px solid var(--border)"><iframe src="https://www.youtube.com/embed/${videoId}?rel=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>`;
+}
+
 function extractText(node: Record<string, unknown>): string {
   if (!node) return "";
   if (node.type === "text") return (node.text as string) || "";
@@ -112,6 +117,8 @@ export function renderNode(node: Record<string, unknown>): string {
       return `<img src="${attrs.src || ""}" alt="${attrs.alt || ""}" />`;
     case "drawing":
       return renderDrawing(attrs.strokes as string | undefined);
+    case "youtube":
+      return renderYoutube(attrs.videoId as string | undefined);
     case "text":
       return html;
     default:

@@ -126,95 +126,97 @@ export default function NotePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-6 py-3">
-        <Link
-          href={folderId ? `/folders/${folderId}` : "/"}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="h-6 w-px bg-border" />
-        <FolderPicker
-          noteId={id}
-          currentFolderId={folderId}
-          currentFolderName={folderName}
-          onMoved={(newFolderId, newFolderName) => {
-            setFolderId(newFolderId);
-            setFolderName(newFolderName);
-          }}
-        />
-        {copiedFromAuthor && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 text-xs">
-            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20">
-              <BookmarkPlus className="h-2.5 w-2.5 text-blue-500" />
-            </div>
-            <span className="text-muted-foreground">Copied from</span>
-            <span className="font-medium text-blue-600 dark:text-blue-400">{copiedFromAuthor}</span>
-            {copiedFromTitle && (
-              <>
-                <span className="text-muted-foreground/60">|</span>
-                <span className="truncate max-w-36 text-muted-foreground">{copiedFromTitle}</span>
-              </>
-            )}
-          </div>
-        )}
-        <div className="h-6 w-px bg-border" />
+      <div className="border-b border-border px-3 sm:px-6 py-2.5 sm:py-3">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Note title..."
-          className="border-0 bg-transparent text-lg font-semibold shadow-none focus-visible:ring-0"
+          className="border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
         />
-        <div className="flex-1" />
-        <button
-          onClick={togglePublic}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-            isPublic
-              ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-          }`}
-        >
-          {isPublic ? (
-            <Globe className="h-3.5 w-3.5" />
-          ) : (
-            <Lock className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-1.5 sm:gap-3 mt-1.5 sm:mt-2">
+          <Link
+            href={folderId ? `/folders/${folderId}` : "/"}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="h-6 w-px bg-border" />
+          <FolderPicker
+            noteId={id}
+            currentFolderId={folderId}
+            currentFolderName={folderName}
+            onMoved={(newFolderId, newFolderName) => {
+              setFolderId(newFolderId);
+              setFolderName(newFolderName);
+            }}
+          />
+          {copiedFromAuthor && (
+            <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 text-xs">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20">
+                <BookmarkPlus className="h-2.5 w-2.5 text-blue-500" />
+              </div>
+              <span className="hidden sm:inline text-muted-foreground">Copied from</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400">{copiedFromAuthor}</span>
+              {copiedFromTitle && (
+                <>
+                  <span className="text-muted-foreground/60">|</span>
+                  <span className="truncate max-w-36 text-muted-foreground">{copiedFromTitle}</span>
+                </>
+              )}
+            </div>
           )}
-          {isPublic ? "Public" : "Private"}
-        </button>
-        {isPublic && (
+          <div className="h-6 w-px bg-border" />
+          <div className="flex-1" />
           <button
-            onClick={copyShareLink}
+            onClick={togglePublic}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              isPublic
+                ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {isPublic ? (
+              <Globe className="h-3.5 w-3.5" />
+            ) : (
+              <Lock className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">{isPublic ? "Public" : "Private"}</span>
+          </button>
+          {isPublic && (
+            <button
+              onClick={copyShareLink}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Copy link"}</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowVersions(true)}
             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
           >
-            {copied ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-            {copied ? "Copied" : "Copy link"}
+            <History className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Versions</span>
           </button>
-        )}
-        <button
-          onClick={() => setShowVersions(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
-        >
-          <History className="h-3.5 w-3.5" />
-          Versions
-        </button>
-        <button
-          onClick={handleDelete}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : "Save"}
-        </button>
+          <button
+            onClick={handleDelete}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-1 sm:gap-2 rounded-lg bg-primary px-2.5 sm:px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
+          </button>
+        </div>
       </div>
 
       <div className={`flex-1 relative min-h-[60vh] ${editingVersion ? "animate-editor-switch" : ""}`}>

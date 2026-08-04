@@ -79,9 +79,10 @@ export default function SharePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-40 border-b border-border bg-background">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-3">
-          <FileText className="h-5 w-5 text-muted-foreground" />
-          <h1 className="flex-1 text-lg font-semibold">{note.title || "Untitled"}</h1>
+        <div className="mx-auto max-w-3xl px-3 sm:px-6 py-2.5 sm:py-3">
+          <h1 className="text-base sm:text-lg font-semibold">{note.title || "Untitled"}</h1>
+          <div className="flex items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
+          <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
           {note.authorName && (
             <span className="text-xs text-muted-foreground">
               by {note.authorName}
@@ -91,14 +92,14 @@ export default function SharePage() {
             <button
               onClick={handleCopy}
               disabled={copying}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+              className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg bg-primary px-2.5 sm:px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
             >
               {copying ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <BookmarkPlus className="h-3.5 w-3.5" />
               )}
-              {copying ? "Copying..." : "Copy to my notes"}
+              <span className="hidden sm:inline">{copying ? "Copying..." : "Copy to my notes"}</span>
             </button>
           )}
           <Link
@@ -108,9 +109,10 @@ export default function SharePage() {
             <ExternalLink className="h-4 w-4" />
             Ploody
           </Link>
+          </div>
         </div>
       </div>
-      <div className="mx-auto max-w-3xl px-8 py-6">
+      <div className="mx-auto max-w-3xl px-4 sm:px-8 py-6">
         <div
           className="tiptap focus:outline-none"
           dangerouslySetInnerHTML={{ __html: renderContent(note.content) }}

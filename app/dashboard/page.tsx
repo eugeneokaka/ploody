@@ -32,7 +32,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-8 py-6 sm:py-8">
         <h1 className="mb-6 text-2xl font-bold tracking-tight">Dashboard</h1>
 
         {notes.length === 0 ? (

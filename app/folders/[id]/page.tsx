@@ -40,7 +40,7 @@ export default async function FolderPage({ params }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-8 py-6 sm:py-8">
         <div className="mb-6 flex items-center gap-3">
           <Link
             href="/"
