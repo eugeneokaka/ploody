@@ -3,8 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Folder as FolderIcon, Plus, FileText, FolderPlus, ChevronDown } from "lucide-react";
+import { Folder as FolderIcon, Plus, FileText, FolderPlus, ChevronDown, MoreVertical, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface FolderItem {
   id: string;
@@ -76,6 +83,26 @@ export function FolderGrid() {
     await loadInitial();
   }
 
+  async function handleDelete(id: string) {
+    await api(`/api/folders/${id}`, { method: "DELETE" });
+    await loadInitial();
+  }
+
+  function handleDeleteWithContents(id: string) {
+    toast("Delete folder and contents?", {
+      description:
+        "This will delete all notes and subfolders inside it. This cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          await api(`/api/folders/${id}?withContents=true`, { method: "DELETE" });
+          await loadInitial();
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
+  }
+
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
@@ -134,25 +161,47 @@ export function FolderGrid() {
             {folders.map((folder) => {
               const itemCount = folder._count.notes + folder._count.children;
               return (
-                <button
+                <div
                   key={folder.id}
-                  onClick={() => router.push(`/folders/${folder.id}`)}
-                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+                  className="group relative rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-sm"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                    <FolderIcon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium truncate">
-                      {folder.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {itemCount === 0
-                        ? "Empty"
-                        : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
-                    </p>
-                  </div>
-                </button>
+                  <button
+                    onClick={() => router.push(`/folders/${folder.id}`)}
+                    className="flex w-full flex-col gap-2 p-4 text-left"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <FolderIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium truncate">
+                        {folder.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {itemCount === 0
+                          ? "Empty"
+                          : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
+                      </p>
+                    </div>
+                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="absolute right-1.5 top-1.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                      <MoreVertical className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => handleDelete(folder.id)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => handleDeleteWithContents(folder.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete with contents
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               );
             })}
           </div>

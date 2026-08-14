@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface FolderItem {
   id: string;
@@ -107,6 +108,22 @@ export function FolderSidebar() {
   async function handleDelete(id: string) {
     await api(`/api/folders/${id}`, { method: "DELETE" });
     await loadFolders();
+  }
+
+  function handleDeleteWithContents(id: string) {
+    toast("Delete folder and contents?", {
+      description:
+        "This will delete all notes and subfolders inside it. This cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          await api(`/api/folders/${id}?withContents=true`, { method: "DELETE" });
+          if (pathname === `/folders/${id}`) router.push("/");
+          await loadFolders();
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
   }
 
   function renderFolder(folder: FolderItem, depth: number = 0) {
@@ -199,6 +216,13 @@ export function FolderSidebar() {
               >
                 <Trash2 className="h-4 w-4" />
                 Delete
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => handleDeleteWithContents(folder.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete with contents
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

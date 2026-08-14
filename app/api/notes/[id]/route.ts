@@ -86,6 +86,7 @@ export async function PATCH(
           where: { id: note.currentVersionId },
           data: versionUpdate,
         });
+        await prisma.$executeRaw`UPDATE "note" SET "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${id} AND "userId" = ${userId}`;
       }
     }
 

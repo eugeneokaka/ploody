@@ -44,20 +44,49 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserId();
     const { id } = await params;
+    const withContents = req.nextUrl.searchParams.get("withContents") === "true";
 
-    log.info("Deleting folder", { id });
+    log.info("Deleting folder", { id, withContents });
 
-    await prisma.folder.delete({
-      where: { id, userId },
+    await prisma.$transaction(async (tx) => {
+      if (withContents) {
+        const folderIds: string[] = [];
+        const queue = [id];
+        while (queue.length) {
+          const current = queue.shift()!;
+          folderIds.push(current);
+          const children = await tx.folder.findMany({
+            where: { parentId: current, userId },
+            select: { id: true },
+          });
+          for (const child of children) queue.push(child.id);
+        }
+
+        const notes = await tx.note.findMany({
+          where: { folderId: { in: folderIds }, userId },
+          select: { id: true },
+        });
+        const noteIds = notes.map((n) => n.id);
+
+        if (noteIds.length > 0) {
+          await tx.comment.deleteMany({ where: { noteId: { in: noteIds } } });
+          await tx.noteVersion.deleteMany({ where: { noteId: { in: noteIds } } });
+          await tx.note.deleteMany({ where: { id: { in: noteIds } } });
+        }
+
+        await tx.folder.deleteMany({ where: { id: { in: folderIds }, userId } });
+      } else {
+        await tx.folder.delete({ where: { id, userId } });
+      }
     });
 
-    log.info(`Folder deleted`, { id });
+    log.info(`Folder deleted`, { id, withContents });
     return NextResponse.json({ success: true });
   } catch (e) {
     log.error("Failed to delete folder", e);

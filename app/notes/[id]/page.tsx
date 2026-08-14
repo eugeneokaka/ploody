@@ -106,14 +106,22 @@ export default function NotePage() {
     }
   }, [editingVersion, editorKey]);
 
-  const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this note?")) return;
-    await fetch(`/api/notes/${id}`, { method: "DELETE" });
-    if (folderId) {
-      router.push(`/folders/${folderId}`);
-    } else {
-      router.push("/");
-    }
+  const handleDelete = useCallback(() => {
+    toast("Delete this note?", {
+      description: "This cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          await fetch(`/api/notes/${id}`, { method: "DELETE" });
+          if (folderId) {
+            router.push(`/folders/${folderId}`);
+          } else {
+            router.push("/");
+          }
+        },
+      },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
   }, [id, folderId, router]);
 
   if (loading) {

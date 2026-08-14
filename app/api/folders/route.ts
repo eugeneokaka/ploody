@@ -26,9 +26,11 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = { userId };
     if (parentIdParam !== null) {
       where.parentId = parentIdParam || null;
+    } else {
+      where.parentId = null;
     }
     if (cursor) {
-      where.createdAt = { gt: new Date(cursor) };
+      where.createdAt = { lt: new Date(cursor) };
     }
 
     const take = limit > 0 ? limit + 1 : undefined;
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
     const folders = await prisma.folder.findMany({
       where,
       include: { _count: { select: { notes: true, children: true } } },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
       take,
     });
     console.log(folders);

@@ -107,14 +107,16 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
       },
       handlePaste: (_view, event, slice) => {
         const plainText = event.clipboardData?.getData("text/plain")?.trim();
-        if (plainText && extractYoutubeId(plainText)) {
+        const videoId = plainText ? extractYoutubeId(plainText) : null;
+        const isOnlyYoutubeUrl = Boolean(plainText && videoId && !/\s/.test(plainText));
+        if (isOnlyYoutubeUrl) {
           const { tr } = _view.state;
           _view.dispatch(
             tr
               .replaceSelectionWith(
                 _view.state.schema.nodes.youtube.create({
                   url: plainText,
-                  videoId: extractYoutubeId(plainText),
+                  videoId,
                 })
               )
               .scrollIntoView()
@@ -149,6 +151,28 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
           const code = pre.querySelector("code");
           if (code) {
             code.textContent = (code.textContent ?? "").replace(/\n+$/, "");
+          }
+        });
+
+        const toYoutubeDiv = (url: string): HTMLDivElement => {
+          const div = doc.createElement("div");
+          div.setAttribute("data-type", "youtube");
+          div.setAttribute("data-url", url);
+          div.setAttribute("data-video-id", extractYoutubeId(url) || "");
+          return div;
+        };
+
+        doc.querySelectorAll("a[href]").forEach((a) => {
+          const href = a.getAttribute("href") || "";
+          if (extractYoutubeId(href)) {
+            a.replaceWith(toYoutubeDiv(href));
+          }
+        });
+
+        doc.querySelectorAll("iframe[src]").forEach((iframe) => {
+          const src = iframe.getAttribute("src") || "";
+          if (extractYoutubeId(src)) {
+            iframe.replaceWith(toYoutubeDiv(src));
           }
         });
 
@@ -347,8 +371,12 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
 
   const handleStrip = useCallback(() => {
     if (!editor) return;
-    if (!window.confirm("This will remove all blank lines and empty code blocks from the document. Continue?")) return;
-    stripBlankLines();
+    toast("Remove blank lines?", {
+      description:
+        "This will remove all blank lines and empty code blocks from the document.",
+      action: { label: "Remove", onClick: () => stripBlankLines() },
+      cancel: { label: "Cancel", onClick: () => {} },
+    });
   }, [editor, stripBlankLines]);
 
   const addImage = useCallback(() => {
@@ -364,7 +392,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
         const [res] = await uploadFiles("imageUploader", { files: [file] });
         editor.chain().focus().setImage({ src: res.ufsUrl }).run();
       } catch {
-        alert("Upload failed. Please try again.");
+        toast.error("Upload failed. Please try again.");
       }
 
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -390,7 +418,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     if (!url) return;
     const videoId = extractYoutubeId(url.trim());
     if (!videoId) {
-      alert("Invalid YouTube URL");
+      toast.error("Invalid YouTube URL");
       return;
     }
     editor
