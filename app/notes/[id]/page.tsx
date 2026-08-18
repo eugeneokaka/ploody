@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2, BookmarkPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { NoteEditor } from "@/components/note-editor";
@@ -21,6 +21,7 @@ export default function NotePage() {
   const [folderId, setFolderId] = useState<string | null>(null);
   const [folderName, setFolderName] = useState<string | undefined>();
   const [isPublic, setIsPublic] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [noteUserId, setNoteUserId] = useState<string | null>(null);
   const [copiedFromAuthor, setCopiedFromAuthor] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export default function NotePage() {
         setFolderId(note.folderId);
         setFolderName(note.folder?.name);
         setIsPublic(note.isPublic);
+        setAiEnabled(note.aiEnabled ?? false);
         setCurrentVersionId(newVersionId);
         setNoteUserId(note.userId);
         setCopiedFromAuthor(note.copiedFrom?.user?.name ?? null);
@@ -74,7 +76,14 @@ export default function NotePage() {
     });
     setSaving(false);
     toast.success("Note saved");
-  }, [id, title, content, isPublic]);
+
+    if (aiEnabled) {
+      fetch(`/api/notes/${id}/scan`, { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => toast.success(`Re-indexed (${d.chunks ?? 0} chunks)`))
+        .catch(() => {});
+    }
+  }, [id, title, content, isPublic, aiEnabled]);
 
   const togglePublic = useCallback(() => {
     const next = !isPublic;
@@ -174,6 +183,12 @@ export default function NotePage() {
             </div>
           )}
           <div className="h-6 w-px bg-border" />
+          {aiEnabled && (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-2 py-1 text-[10px] font-medium text-yellow-600 dark:text-yellow-400">
+              <Sparkles className="h-3 w-3" />
+              AI enabled
+            </span>
+          )}
           <div className="flex-1" />
           <button
             onClick={togglePublic}
@@ -236,7 +251,14 @@ export default function NotePage() {
             </div>
           </div>
         )}
-        <NoteEditor key={`${id}-v${editorKey}`} content={content} onChange={setContent} />
+        <NoteEditor
+          key={`${id}-v${editorKey}`}
+          content={content}
+          onChange={setContent}
+          noteId={id}
+          aiEnabled={aiEnabled}
+          onAiEnabledChange={setAiEnabled}
+        />
       </div>
 
       {isPublic && noteUserId && (

@@ -18,6 +18,15 @@ export function renderTextOnly(content: string, maxLength = 200): string {
   }
 }
 
+export function extractPlainText(content: string): string {
+  try {
+    const doc = JSON.parse(content);
+    return extractText(doc);
+  } catch {
+    return content;
+  }
+}
+
 function renderDrawing(strokes?: string): string {
   if (!strokes) return "";
   try {

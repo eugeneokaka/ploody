@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChannelProvider, useChannel } from "ably/react";
 import { useSession } from "@/lib/auth-client";
+import { AblyProviderWrapper } from "@/components/ably-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
@@ -259,8 +260,10 @@ function CommentList({ noteId, authorId }: { noteId: string; authorId: string })
 
 export function CommentSection({ noteId, authorId }: { noteId: string; authorId: string }) {
   return (
-    <ChannelProvider channelName={`note:${noteId}:comments`}>
-      <CommentList noteId={noteId} authorId={authorId} />
-    </ChannelProvider>
+    <AblyProviderWrapper>
+      <ChannelProvider channelName={`note:${noteId}:comments`}>
+        <CommentList noteId={noteId} authorId={authorId} />
+      </ChannelProvider>
+    </AblyProviderWrapper>
   );
 }

@@ -51,6 +51,8 @@ model Note {
 
   isPublic Boolean @default(false)
 
+  aiEnabled Boolean @default(false)
+
   copiedFromId String?
   copiedFrom   Note?  @relation("CopiedFrom", fields: [copiedFromId], references: [id], onDelete: SetNull)
   copies       Note[] @relation("CopiedFrom")
@@ -63,6 +65,7 @@ model Note {
   versions       NoteVersion[] @relation("NoteVersions")
   currentVersion NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
   comments       Comment[]
+  chunks         NoteChunk[]
 
   searchVector Unsupported("tsvector")?
 
@@ -90,6 +93,20 @@ model Comment {
   @@index([authorId])
   @@index([noteId, createdAt])
   @@map("comment")
+}
+
+model NoteChunk {
+  id         String   @id @default(cuid())
+  noteId     String
+  chunkIndex Int
+  content    String   @db.Text
+  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  embedding  Unsupported("vector(1024)")?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([noteId])
+  @@map("note_chunk")
 }
 
 model NoteVersion {

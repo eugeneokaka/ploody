@@ -37,11 +37,16 @@ import {
   Eraser,
   Video,
   Upload,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Extension } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { uploadFiles } from "@/lib/uploadthing";
 import { ChapterPanel, type HeadingItem } from "@/components/chapter-panel";
+import { AiPanel } from "@/components/ai-panel";
 import { toast } from "sonner";
 
 const fontFamilies = [
@@ -57,15 +62,55 @@ const textColors = [
   "#805ad5", "#d53f8c",
 ];
 
+const flashHighlightKey = new PluginKey("flashHighlight");
+
+const flashHighlightPlugin: Plugin<DecorationSet> = new Plugin<DecorationSet>({
+  key: flashHighlightKey,
+  state: {
+    init(): DecorationSet {
+      return DecorationSet.empty;
+    },
+    apply(tr, set): DecorationSet {
+      const meta = tr.getMeta(flashHighlightKey) as
+        | { set: DecorationSet }
+        | undefined;
+      if (meta?.set) return meta.set;
+      return set.map(tr.mapping, tr.doc);
+    },
+  },
+  props: {
+    decorations(state): DecorationSet {
+      return flashHighlightPlugin.getState(state) ?? DecorationSet.empty;
+    },
+  },
+});
+
+const FlashHighlightExtension = Extension.create({
+  name: "flashHighlight",
+  addProseMirrorPlugins() {
+    return [flashHighlightPlugin];
+  },
+});
+
 interface NoteEditorProps {
   content?: string;
   onChange?: (json: string) => void;
+  noteId?: string;
+  aiEnabled?: boolean;
+  onAiEnabledChange?: (enabled: boolean) => void;
 }
 
-export function NoteEditor({ content, onChange }: NoteEditorProps) {
+export function NoteEditor({
+  content,
+  onChange,
+  noteId,
+  aiEnabled = false,
+  onAiEnabledChange,
+}: NoteEditorProps) {
   const [showColors, setShowColors] = useState(false);
   const [showFind, setShowFind] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
+  const [showAi, setShowAi] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentMatch, setCurrentMatch] = useState(0);
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
@@ -94,6 +139,7 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
       }),
       DrawingExtension,
       YoutubeExtension,
+      FlashHighlightExtension,
     ],
     content: content ? JSON.parse(content) : undefined,
     onUpdate: ({ editor }) => {
@@ -303,6 +349,92 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
     [findMatches, scrollToPosition]
   );
 
+  const flashChunk = useCallback(
+    (from: number, to: number) => {
+      if (!editor || to <= from) return;
+
+      try {
+        editor.chain().focus().setTextSelection({ from, to }).run();
+      } catch {
+        // selection may be invalid if the range crosses block boundaries
+      }
+
+      const deco = Decoration.inline(from, to, { class: "chunk-highlight" });
+      const set = DecorationSet.create(editor.state.doc, [deco]);
+      editor.view.dispatch(editor.state.tr.setMeta(flashHighlightKey, { set }));
+
+      window.setTimeout(() => {
+        if (editor.isDestroyed) return;
+        editor.view.dispatch(
+          editor.state.tr.setMeta(flashHighlightKey, {
+            set: DecorationSet.empty,
+          })
+        );
+      }, 2500);
+    },
+    [editor]
+  );
+
+  const scrollToChunk = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      const doc = editor.state.doc;
+      const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+      const target = normalize(text);
+      if (!target) return;
+
+      // Flatten the document's text (whitespace collapsed) while keeping a
+      // position map, so we can locate a chunk's text exactly and map it back
+      // to editor positions.
+      const entries: { ch: string; pos: number }[] = [];
+      const pushChar = (ch: string, pos: number) => {
+        if (/\s/.test(ch)) {
+          if (entries.length > 0 && entries[entries.length - 1].ch !== " ") {
+            entries.push({ ch: " ", pos });
+          }
+        } else {
+          entries.push({ ch, pos });
+        }
+      };
+
+      doc.descendants((node, pos) => {
+        if (node.isText) {
+          const s = node.text ?? "";
+          for (let i = 0; i < s.length; i++) pushChar(s[i], pos + i);
+        } else if (node.isBlock && node !== doc) {
+          pushChar(" ", pos);
+        }
+      });
+
+      while (entries.length && entries[0].ch === " ") entries.shift();
+      while (entries.length && entries[entries.length - 1].ch === " ")
+        entries.pop();
+
+      const flat = entries.map((e) => e.ch).join("");
+
+      const needles = [
+        target,
+        target.slice(0, 120),
+        target.slice(0, 60),
+        target.slice(0, 30),
+        target.split(" ").slice(0, 6).join(" "),
+      ];
+
+      for (const needle of needles) {
+        if (!needle) continue;
+        const idx = flat.indexOf(needle);
+        if (idx < 0) continue;
+        const from = entries[idx].pos;
+        const to = entries[idx + needle.length - 1].pos + 1;
+        if (to <= from) continue;
+        scrollToPosition(from);
+        flashChunk(from, to);
+        return;
+      }
+    },
+    [editor, scrollToPosition, flashChunk]
+  );
+
   useEffect(() => {
     if (searchQuery && findMatches.length > 0) {
       setCurrentMatch(0);
@@ -434,8 +566,9 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-col">
-      <div className="sticky top-14 z-40 border-b border-border bg-background">
+    <div className="flex">
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="sticky top-14 z-40 border-b border-border bg-background">
         <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1.5 sm:py-2">
           <div className="flex items-center gap-0.5 border-r border-border pr-2 mr-2">
             <ToolbarButton
@@ -637,6 +770,13 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
           >
             <ListTree className="h-4 w-4" />
           </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setShowAi(!showAi)}
+            active={showAi}
+            title="Ask AI about this note"
+          >
+            <Sparkles className="h-4 w-4 text-yellow-400" />
+          </ToolbarButton>
         </div>
 
         {showFind && (
@@ -732,6 +872,18 @@ export function NoteEditor({ content, onChange }: NoteEditorProps) {
           activeHeadingId={activeHeadingId}
           onClose={() => setShowChapters(false)}
         />
+      )}
+      </div>
+
+      {showAi && noteId && (
+        <div className="sticky top-14 z-30 h-[calc(100vh-3.5rem)] w-80 sm:w-96 shrink-0 border-l border-border bg-background">
+          <AiPanel
+            noteId={noteId}
+            aiEnabled={aiEnabled}
+            onStateChange={(enabled) => onAiEnabledChange?.(enabled)}
+            onSourceClick={scrollToChunk}
+          />
+        </div>
       )}
     </div>
   );
