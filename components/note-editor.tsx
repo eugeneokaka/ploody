@@ -38,12 +38,10 @@ import {
   Video,
   Upload,
   Sparkles,
+  Highlighter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { uploadFiles } from "@/lib/uploadthing";
 import { ChapterPanel, type HeadingItem } from "@/components/chapter-panel";
 import { AiPanel } from "@/components/ai-panel";
@@ -62,35 +60,14 @@ const textColors = [
   "#805ad5", "#d53f8c",
 ];
 
-const flashHighlightKey = new PluginKey("flashHighlight");
-
-const flashHighlightPlugin: Plugin<DecorationSet> = new Plugin<DecorationSet>({
-  key: flashHighlightKey,
-  state: {
-    init(): DecorationSet {
-      return DecorationSet.empty;
-    },
-    apply(tr, set): DecorationSet {
-      const meta = tr.getMeta(flashHighlightKey) as
-        | { set: DecorationSet }
-        | undefined;
-      if (meta?.set) return meta.set;
-      return set.map(tr.mapping, tr.doc);
-    },
-  },
-  props: {
-    decorations(state): DecorationSet {
-      return flashHighlightPlugin.getState(state) ?? DecorationSet.empty;
-    },
-  },
-});
-
-const FlashHighlightExtension = Extension.create({
-  name: "flashHighlight",
-  addProseMirrorPlugins() {
-    return [flashHighlightPlugin];
-  },
-});
+const highlightColors = [
+  { name: "Yellow", color: "rgba(250, 204, 21, 0.45)" },
+  { name: "Blue", color: "rgba(59, 130, 246, 0.4)" },
+  { name: "Green", color: "rgba(16, 185, 129, 0.4)" },
+  { name: "Pink", color: "rgba(236, 72, 153, 0.4)" },
+  { name: "Orange", color: "rgba(249, 115, 22, 0.4)" },
+  { name: "None", color: "" },
+];
 
 interface NoteEditorProps {
   content?: string;
@@ -118,6 +95,18 @@ export function NoteEditor({
   const isSelfUpdate = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const findInputRef = useRef<HTMLInputElement>(null);
+  const [highlightColor, setHighlightColor] = useState<string>(() => {
+    if (typeof window === "undefined") return "rgba(250, 204, 21, 0.45)";
+    try {
+      return (
+        localStorage.getItem("chunk-highlight-color") ||
+        "rgba(250, 204, 21, 0.45)"
+      );
+    } catch {
+      return "rgba(250, 204, 21, 0.45)";
+    }
+  });
+  const [showHighlight, setShowHighlight] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -139,7 +128,6 @@ export function NoteEditor({
       }),
       DrawingExtension,
       YoutubeExtension,
-      FlashHighlightExtension,
     ],
     content: content ? JSON.parse(content) : undefined,
     onUpdate: ({ editor }) => {
@@ -227,6 +215,23 @@ export function NoteEditor({
     },
     immediatelyRender: false,
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chunk-highlight-color", highlightColor);
+    } catch {
+      // ignore
+    }
+  }, [highlightColor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    if (highlightColor) {
+      editor.view.dom.style.setProperty("--hl-selection", highlightColor);
+    } else {
+      editor.view.dom.style.removeProperty("--hl-selection");
+    }
+  }, [editor, highlightColor]);
 
   useEffect(() => {
     if (!editor || !content) return;
@@ -352,85 +357,67 @@ export function NoteEditor({
   const flashChunk = useCallback(
     (from: number, to: number) => {
       if (!editor || to <= from) return;
-
+      if (!highlightColor) return;
       try {
         editor.chain().focus().setTextSelection({ from, to }).run();
       } catch {
         // selection may be invalid if the range crosses block boundaries
       }
-
-      const deco = Decoration.inline(from, to, { class: "chunk-highlight" });
-      const set = DecorationSet.create(editor.state.doc, [deco]);
-      editor.view.dispatch(editor.state.tr.setMeta(flashHighlightKey, { set }));
-
-      window.setTimeout(() => {
-        if (editor.isDestroyed) return;
-        editor.view.dispatch(
-          editor.state.tr.setMeta(flashHighlightKey, {
-            set: DecorationSet.empty,
-          })
-        );
-      }, 2500);
     },
-    [editor]
+    [editor, highlightColor]
   );
 
   const scrollToChunk = useCallback(
     (text: string) => {
       if (!editor) return;
       const doc = editor.state.doc;
-      const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
-      const target = normalize(text);
-      if (!target) return;
 
-      // Flatten the document's text (whitespace collapsed) while keeping a
-      // position map, so we can locate a chunk's text exactly and map it back
-      // to editor positions.
-      const entries: { ch: string; pos: number }[] = [];
-      const pushChar = (ch: string, pos: number) => {
-        if (/\s/.test(ch)) {
-          if (entries.length > 0 && entries[entries.length - 1].ch !== " ") {
-            entries.push({ ch: " ", pos });
-          }
-        } else {
-          entries.push({ ch, pos });
-        }
+      // Flatten the doc's non-whitespace characters with a position map.
+      // Matching on a spaceless flattening makes it robust to whitespace
+      // differences between the indexed chunk and the live document
+      // (e.g. spacing around marks), which is what made the first chunk
+      // fail to match even though its text was clearly in the note.
+      const positions: number[] = [];
+      let flat = "";
+      const push = (ch: string, pos: number) => {
+        if (/\s/.test(ch)) return;
+        positions.push(pos);
+        flat += ch;
       };
 
       doc.descendants((node, pos) => {
         if (node.isText) {
           const s = node.text ?? "";
-          for (let i = 0; i < s.length; i++) pushChar(s[i], pos + i);
-        } else if (node.isBlock && node !== doc) {
-          pushChar(" ", pos);
+          for (let i = 0; i < s.length; i++) push(s[i], pos + i);
         }
       });
 
-      while (entries.length && entries[0].ch === " ") entries.shift();
-      while (entries.length && entries[entries.length - 1].ch === " ")
-        entries.pop();
-
-      const flat = entries.map((e) => e.ch).join("");
+      const target = text.replace(/\s+/g, "");
+      if (!target) return;
 
       const needles = [
         target,
         target.slice(0, 120),
         target.slice(0, 60),
         target.slice(0, 30),
-        target.split(" ").slice(0, 6).join(" "),
+        target.slice(0, 15),
       ];
 
       for (const needle of needles) {
         if (!needle) continue;
         const idx = flat.indexOf(needle);
         if (idx < 0) continue;
-        const from = entries[idx].pos;
-        const to = entries[idx + needle.length - 1].pos + 1;
+        const from = positions[idx];
+        const to = positions[idx + needle.length - 1] + 1;
         if (to <= from) continue;
         scrollToPosition(from);
         flashChunk(from, to);
         return;
       }
+
+      toast.info("Couldn't locate this chunk — try re-enabling AI to re-index.", {
+        duration: 4000,
+      });
     },
     [editor, scrollToPosition, flashChunk]
   );
@@ -567,83 +554,95 @@ export function NoteEditor({
 
   return (
     <div className="flex">
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="sticky top-14 z-40 border-b border-border bg-background">
+      <div className={cn("min-w-0 flex-1 flex-col", showAi ? "hidden sm:flex" : "flex")}>
+        <div className="editor-toolbar sticky top-14 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1.5 sm:py-2">
-          <div className="flex items-center gap-0.5 border-r border-border pr-2 mr-2">
+          <div className="flex items-center gap-0.5">
             <ToolbarButton
               onClick={() => editor.chain().focus().undo().run()}
               disabled={!editor.can().undo()}
+              title="Undo"
             >
               <Undo2 className="h-4 w-4" />
             </ToolbarButton>
             <ToolbarButton
               onClick={() => editor.chain().focus().redo().run()}
               disabled={!editor.can().redo()}
+              title="Redo"
             >
               <Redo2 className="h-4 w-4" />
             </ToolbarButton>
           </div>
 
+          <Divider />
+
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive("heading", { level: 1 })}
+            title="Heading 1"
           >
-            <Heading1 className="h-4 w-4 text-amber-400" />
+            <Heading1 className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive("heading", { level: 2 })}
+            title="Heading 2"
           >
-            <Heading2 className="h-4 w-4 text-amber-400" />
+            <Heading2 className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             active={editor.isActive("heading", { level: 3 })}
+            title="Heading 3"
           >
-            <Heading3 className="h-4 w-4 text-amber-400" />
+            <Heading3 className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().setParagraph().run()}
             active={editor.isActive("paragraph")}
             title="Paragraph"
           >
-            <Pilcrow className="h-4 w-4 text-amber-400" />
+            <Pilcrow className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
+            title="Bold"
           >
-            <Bold className="h-4 w-4 text-sky-400" />
+            <Bold className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive("italic")}
+            title="Italic"
           >
-            <Italic className="h-4 w-4 text-sky-400" />
+            <Italic className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive("underline")}
+            title="Underline"
           >
-            <UnderlineIcon className="h-4 w-4 text-sky-400" />
+            <UnderlineIcon className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleStrike().run()}
             active={editor.isActive("strike")}
+            title="Strikethrough"
           >
-            <Strikethrough className="h-4 w-4 text-sky-400" />
+            <Strikethrough className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <div className="relative">
             <ToolbarButton
               onClick={() => setShowColors(!showColors)}
               active={Boolean(editor.getAttributes("textStyle").color)}
+              title="Text color"
             >
               <Palette className="h-4 w-4" />
             </ToolbarButton>
@@ -653,7 +652,7 @@ export function NoteEditor({
                   {textColors.map((color) => (
                     <button
                       key={color}
-                      className="h-6 w-6 rounded-md border border-border"
+                      className="h-6 w-6 rounded-md border border-border transition-transform hover:scale-110"
                       style={{ backgroundColor: color }}
                       onClick={() => {
                         editor.chain().focus().setColor(color).run();
@@ -675,34 +674,74 @@ export function NoteEditor({
             )}
           </div>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <div className="relative">
+            <ToolbarButton
+              onClick={() => setShowHighlight(!showHighlight)}
+              active={showHighlight}
+              title="Highlight color"
+            >
+              <Highlighter className="h-4 w-4" />
+            </ToolbarButton>
+            {showHighlight && (
+              <div className="absolute left-0 top-full z-50 mt-1 rounded-lg border border-border bg-popover p-2 shadow-md">
+                <div className="flex items-center gap-1.5">
+                  {highlightColors.map((c) => (
+                    <button
+                      key={c.name}
+                      title={c.name}
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-md border border-border transition-transform hover:scale-110",
+                        highlightColor === c.color &&
+                          "ring-2 ring-ring ring-offset-1 ring-offset-popover"
+                      )}
+                      style={{ backgroundColor: c.color || "transparent" }}
+                      onClick={() => {
+                        setHighlightColor(c.color);
+                        setShowHighlight(false);
+                      }}
+                    >
+                      {!c.color && (
+                        <span className="text-xs text-muted-foreground">/</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Divider />
 
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
+            title="Bullet list"
           >
-            <List className="h-4 w-4 text-emerald-400" />
+            <List className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive("orderedList")}
+            title="Ordered list"
           >
-            <ListOrdered className="h-4 w-4 text-emerald-400" />
+            <ListOrdered className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive("blockquote")}
+            title="Quote"
           >
-            <Quote className="h-4 w-4 text-emerald-400" />
+            <Quote className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
             active={editor.isActive("codeBlock")}
+            title="Code block"
           >
-            <Code className="h-4 w-4 text-emerald-400" />
+            <Code className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <ToolbarButton
             onClick={() =>
@@ -713,13 +752,13 @@ export function NoteEditor({
             <RemoveFormatting className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
-          <ToolbarButton onClick={setLink} active={editor.isActive("link")}>
-            <Link2 className="h-4 w-4 text-blue-400" />
+          <ToolbarButton onClick={setLink} active={editor.isActive("link")} title="Link">
+            <Link2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={addImage}>
-            <Image className="h-4 w-4 text-emerald-400" />
+          <ToolbarButton onClick={addImage} title="Image">
+            <Image className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() =>
@@ -727,31 +766,31 @@ export function NoteEditor({
             }
             title="Add drawing"
           >
-            <PenLine className="h-4 w-4 text-violet-400" />
+            <PenLine className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton onClick={addYoutube} title="Add YouTube video">
-            <Video className="h-4 w-4 text-red-400" />
+            <Video className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <ToolbarButton onClick={addImage} title="Upload image">
-            <Upload className="h-4 w-4 text-indigo-400" />
+            <Upload className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <button
             type="button"
             onClick={handleStrip}
             title="Remove blank lines and empty code blocks"
-            className="inline-flex items-center gap-1.5 h-7 rounded-md px-2 text-xs font-medium bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <Eraser className="h-3.5 w-3.5 text-rose-400" />
+            <Eraser className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Strip</span>
           </button>
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <Divider />
 
           <ToolbarButton
             onClick={() => {
@@ -775,7 +814,7 @@ export function NoteEditor({
             active={showAi}
             title="Ask AI about this note"
           >
-            <Sparkles className="h-4 w-4 text-yellow-400" />
+            <Sparkles className="h-4 w-4" />
           </ToolbarButton>
         </div>
 
@@ -876,17 +915,22 @@ export function NoteEditor({
       </div>
 
       {showAi && noteId && (
-        <div className="sticky top-14 z-30 h-[calc(100vh-3.5rem)] w-80 sm:w-96 shrink-0 border-l border-border bg-background">
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:sticky sm:inset-auto sm:top-14 sm:z-30 sm:h-[calc(100vh-3.5rem)] sm:w-96 sm:shrink-0 sm:border-l sm:border-border">
           <AiPanel
             noteId={noteId}
             aiEnabled={aiEnabled}
             onStateChange={(enabled) => onAiEnabledChange?.(enabled)}
             onSourceClick={scrollToChunk}
+            onClose={() => setShowAi(false)}
           />
         </div>
       )}
     </div>
   );
+}
+
+function Divider() {
+  return <div className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
 function ToolbarButton({
@@ -909,8 +953,9 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30",
-        active && "bg-muted text-foreground"
+        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30",
+        active &&
+          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
       )}
     >
       {children}

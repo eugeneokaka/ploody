@@ -7,6 +7,9 @@ const log = createLogger("ai:query");
 
 const SIMILARITY_THRESHOLD = 0.2;
 
+const TRIVIAL_RE =
+  /^(hey|hi+|hello|yo|sup|hiya|howdy|greetings|ok(ay)?|thanks|thank you|good (morning|afternoon|evening)|what'?s up|whats up|wassup)[!.?\s]*$/i;
+
 export type RetrievedChunk = {
   id: string;
   content: string;
@@ -37,29 +40,43 @@ export async function queryNote(
 
   log.info(`Querying note`, { noteId, question, history: history.length });
 
-  const vector = await embedQuery(question);
-  const vectorStr = `[${vector.join(",")}]`;
-
-  const sources = await prisma.$queryRaw<RetrievedChunk[]>`
-    SELECT
-      "id",
-      "content",
-      "chunkIndex" AS "chunkIndex",
-      1 - (embedding <=> CAST(${vectorStr} AS vector)) AS similarity
-    FROM "note_chunk"
-    WHERE "noteId" = ${noteId}
-    ORDER BY embedding <=> CAST(${vectorStr} AS vector)
-    LIMIT 5
-  `;
-
-  log.info(`Vector search returned ${sources.length} source(s)`, {
-    similarities: sources.map((s) => Number(s.similarity).toFixed(4)),
-  });
-
   const title = note.currentVersion?.title ?? "Untitled";
-  const related = sources.some(
-    (s) => Number(s.similarity) >= SIMILARITY_THRESHOLD
-  );
+  const isTrivial = TRIVIAL_RE.test(question.trim());
+
+  let sources: RetrievedChunk[] = [];
+  if (!isTrivial) {
+    const vector = await embedQuery(question);
+    const vectorStr = `[${vector.join(",")}]`;
+
+    sources = await prisma.$queryRaw<RetrievedChunk[]>`
+      SELECT
+        "id",
+        "content",
+        "chunkIndex" AS "chunkIndex",
+        1 - (embedding <=> CAST(${vectorStr} AS vector)) AS similarity
+      FROM "note_chunk"
+      WHERE "noteId" = ${noteId}
+      ORDER BY embedding <=> CAST(${vectorStr} AS vector)
+      LIMIT 5
+    `;
+
+    log.info(`Vector search returned ${sources.length} source(s)`, {
+      similarities: sources.map((s) => Number(s.similarity).toFixed(4)),
+    });
+
+    log.info(`Retrieved chunks (full content)`, {
+      sources: sources.map((s) => ({
+        chunkIndex: s.chunkIndex,
+        similarity: Number(s.similarity).toFixed(4),
+        length: s.content.length,
+        content: s.content,
+      })),
+    });
+  }
+
+  const related =
+    !isTrivial &&
+    sources.some((s) => Number(s.similarity) >= SIMILARITY_THRESHOLD);
 
   let messages: ChatMessage[];
   let usedSources: RetrievedChunk[];
@@ -93,6 +110,12 @@ export async function queryNote(
     ];
     log.info(`Question not related to note, answering as general assistant`);
   }
+
+  log.info(`Prompt fed to LLM`, {
+    related,
+    usedSources: usedSources.length,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+  });
 
   const answer = await askGroq(messages);
 

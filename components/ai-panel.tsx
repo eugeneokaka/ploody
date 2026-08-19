@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles, Send, Loader2, Trash2 } from "lucide-react";
+import { Sparkles, Send, Loader2, Trash2, ChevronLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -18,11 +19,13 @@ export function AiPanel({
   aiEnabled,
   onStateChange,
   onSourceClick,
+  onClose,
 }: {
   noteId: string;
   aiEnabled: boolean;
   onStateChange: (enabled: boolean) => void;
   onSourceClick?: (content: string) => void;
+  onClose?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -110,7 +113,17 @@ export function AiPanel({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-3">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back to note"
+            className="-ml-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
         <Sparkles className="h-4 w-4 text-yellow-400" />
         <span className="text-sm font-semibold">Ask AI</span>
         {aiEnabled && (
@@ -172,7 +185,9 @@ export function AiPanel({
                 >
                   {m.role === "assistant" ? (
                     <div className="ai-markdown">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {m.content}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     <span className="whitespace-pre-wrap">{m.content}</span>
@@ -188,19 +203,33 @@ export function AiPanel({
               </div>
             )}
             {sources.length > 0 && !loading && (
-              <div className="border-t border-border pt-2 space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Sources (click to jump)
+              <div className="border-t border-border pt-2">
+                <p className="px-1 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Sources — click to jump
                 </p>
-                {sources.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => onSourceClick?.(s.content)}
-                    className="block w-full rounded px-1 py-0.5 text-left text-xs leading-relaxed text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    · {s.content}
-                  </button>
-                ))}
+                <div className="space-y-1">
+                  {sources.map((s, i) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onSourceClick?.(s.content)}
+                      title="Jump to this section"
+                      className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                    >
+                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 block text-xs leading-relaxed text-foreground/80">
+                          {s.content}
+                        </span>
+                        <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground/60">
+                          {Math.round(Number(s.similarity) * 100)}% relevant
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div ref={endRef} />

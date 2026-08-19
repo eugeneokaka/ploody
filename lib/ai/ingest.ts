@@ -1,10 +1,13 @@
 import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { embedTexts } from "@/lib/ai/cohere";
-import { noteToText, chunkText } from "@/lib/ai/chunk";
+import { chunkNoteContent } from "@/lib/ai/chunk";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("ai:ingest");
+
+const INSERT_BATCH_SIZE = 100;
 
 export async function ingestNote(
   noteId: string,
@@ -23,13 +26,19 @@ export async function ingestNote(
     throw new Error("Note not found");
   }
 
-  const text = noteToText(note.currentVersion?.content ?? "");
-  const chunks = chunkText(text);
+  const rawContent = note.currentVersion?.content ?? "";
+  const chunks = chunkNoteContent(rawContent);
 
   log.info(`Note loaded`, {
     noteId,
-    textLength: text.length,
+    rawLength: rawContent.length,
+    rawIsJson: rawContent.trim().startsWith("{"),
+    rawPreview: rawContent.slice(0, 300),
     chunks: chunks.length,
+  });
+
+  log.info(`Chunks to embed`, {
+    chunks: chunks.map((c, i) => ({ index: i, length: c.length, content: c })),
   });
 
   let vectors: number[][] = [];
@@ -41,18 +50,30 @@ export async function ingestNote(
     log.warn(`No text found to index`, { noteId });
   }
 
-  await prisma.$transaction(async (tx) => {
-    const deleted = await tx.$executeRaw`DELETE FROM "note_chunk" WHERE "noteId" = ${noteId}`;
-    log.info(`Deleted old chunks`, { noteId, deleted });
+  const embeddingStrings = vectors.map((v) => `[${v.join(",")}]`);
 
-    for (let i = 0; i < chunks.length; i++) {
-      const embedding = `[${vectors[i].join(",")}]`;
-      await tx.$executeRaw`
-        INSERT INTO "note_chunk" ("id", "noteId", "chunkIndex", "content", "embedding", "createdAt", "updatedAt")
-        VALUES (${randomUUID()}, ${noteId}, ${i}, ${chunks[i]}, CAST(${embedding} AS vector), NOW(), NOW())
-      `;
-    }
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      const deleted = await tx.$executeRaw`DELETE FROM "note_chunk" WHERE "noteId" = ${noteId}`;
+      log.info(`Deleted old chunks`, { noteId, deleted });
+
+      for (let start = 0; start < chunks.length; start += INSERT_BATCH_SIZE) {
+        const batch = chunks.slice(start, start + INSERT_BATCH_SIZE);
+        const rows = Prisma.join(
+          batch.map((chunk, j) => {
+            const i = start + j;
+            return Prisma.sql`(${randomUUID()}, ${noteId}, ${i}, ${chunk}, CAST(${embeddingStrings[i]} AS vector), NOW(), NOW())`;
+          })
+        );
+
+        await tx.$executeRaw`
+          INSERT INTO "note_chunk" ("id", "noteId", "chunkIndex", "content", "embedding", "createdAt", "updatedAt")
+          VALUES ${rows}
+        `;
+      }
+    },
+    { maxWait: 10000, timeout: 60000 }
+  );
 
   log.info(`Ingestion complete`, { noteId, chunks: chunks.length });
   return chunks.length;
