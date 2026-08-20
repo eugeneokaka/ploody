@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles, Send, Loader2, Trash2, ChevronLeft } from "lucide-react";
+import { Sparkles, Send, Loader2, Trash2, ChevronLeft, ArrowDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -34,9 +34,27 @@ export function AiPanel({
   const [sources, setSources] = useState<Source[]>([]);
   const historyRef = useRef<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const stickToBottomRef = useRef(true);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    endRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 80;
+    stickToBottomRef.current = atBottom;
+    setShowScrollButton(!atBottom);
+  }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (stickToBottomRef.current) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, sources, loading]);
 
   const enable = useCallback(async () => {
@@ -80,6 +98,8 @@ export function AiPanel({
     setMessages((prev) => [...prev, { role: "user", content: question }]);
     setInput("");
     setLoading(true);
+    stickToBottomRef.current = true;
+    scrollToBottom();
 
     try {
       const res = await fetch(`/api/notes/${noteId}/ask`, {
@@ -113,7 +133,7 @@ export function AiPanel({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-2.5 sm:py-3">
         {onClose && (
           <button
             type="button"
@@ -124,8 +144,8 @@ export function AiPanel({
             <ChevronLeft className="h-5 w-5" />
           </button>
         )}
-        <Sparkles className="h-4 w-4 text-yellow-400" />
-        <span className="text-sm font-semibold">Ask AI</span>
+        <Sparkles className="h-5 w-5 sm:h-4 sm:w-4 text-yellow-400" />
+        <span className="text-base sm:text-sm font-semibold">Ask AI</span>
         {aiEnabled && (
           <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 rounded-full px-2 py-0.5">
             Enabled
@@ -158,16 +178,21 @@ export function AiPanel({
 
       {!aiEnabled ? (
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base sm:text-sm text-muted-foreground">
             Enable AI to scan this note and ask questions about its contents.
             Chunks are embedded with Cohere and stored in pgvector.
           </p>
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-4 pt-2 pb-3 space-y-3"
+          >
             {messages.length === 0 && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base sm:text-sm text-muted-foreground">
                 Ask a question about this note.
               </p>
             )}
@@ -177,7 +202,7 @@ export function AiPanel({
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  className={`max-w-[85%] rounded-lg px-3 py-2 text-base sm:text-sm ${
                     m.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
@@ -204,7 +229,7 @@ export function AiPanel({
             )}
             {sources.length > 0 && !loading && (
               <div className="border-t border-border pt-2">
-                <p className="px-1 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="px-1 pb-1.5 text-xs sm:text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Sources — click to jump
                 </p>
                 <div className="space-y-1">
@@ -216,14 +241,14 @@ export function AiPanel({
                       title="Jump to this section"
                       className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
                     >
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
+                      <span className="mt-0.5 flex h-5 w-5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded bg-muted text-xs sm:text-[10px] font-semibold text-muted-foreground">
                         {i + 1}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="line-clamp-2 block text-xs leading-relaxed text-foreground/80">
+                        <span className="line-clamp-2 block text-sm sm:text-xs leading-relaxed text-foreground/80">
                           {s.content}
                         </span>
-                        <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground/60">
+                        <span className="mt-0.5 block text-xs sm:text-[10px] tabular-nums text-muted-foreground/60">
                           {Math.round(Number(s.similarity) * 100)}% relevant
                         </span>
                       </span>
@@ -233,6 +258,21 @@ export function AiPanel({
               </div>
             )}
             <div ref={endRef} />
+          </div>
+
+          {showScrollButton && (
+            <button
+              type="button"
+              onClick={() => {
+                stickToBottomRef.current = true;
+                scrollToBottom();
+              }}
+              aria-label="Scroll to bottom"
+              className="absolute bottom-3 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ArrowDown className="h-5 w-5" />
+            </button>
+          )}
           </div>
 
           <div className="border-t border-border px-4 py-3">
@@ -248,15 +288,15 @@ export function AiPanel({
                   }
                 }}
                 placeholder="Ask about this note..."
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 sm:py-2 text-base sm:text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                 disabled={loading}
               />
               <button
                 onClick={ask}
                 disabled={!input.trim() || loading}
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/80 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 sm:px-3 py-2 text-primary-foreground hover:bg-primary/80 disabled:opacity-50 transition-colors"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-5 w-5 sm:h-4 sm:w-4" />
               </button>
             </div>
           </div>

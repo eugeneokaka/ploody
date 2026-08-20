@@ -57,14 +57,31 @@ export async function POST(
     const userId = await getUserId();
     const { id } = await params;
     const body = await req.json();
-    const { title, content } = body;
+    const { title, content, label, updateByLabel } = body;
 
     const note = await prisma.note.findUnique({
       where: { id, userId },
-      select: { id: true },
+      select: { id: true, autosaveVersionId: true },
     });
     if (!note) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    }
+
+    if (updateByLabel && note.autosaveVersionId) {
+      const existing = await prisma.noteVersion.findUnique({
+        where: { id: note.autosaveVersionId },
+      });
+      if (existing) {
+        const updated = await prisma.noteVersion.update({
+          where: { id: existing.id },
+          data: {
+            title: title || "Untitled",
+            content: content || "",
+          },
+        });
+        log.info(`Autosave version updated in place`, { noteId: id, versionId: existing.id });
+        return NextResponse.json(updated);
+      }
     }
 
     const latest = await prisma.noteVersion.findFirst({
@@ -81,12 +98,20 @@ export async function POST(
           version: nextVersion,
           title: title || "Untitled",
           content: content || "",
+          label: label || null,
         },
       });
 
+      const noteUpdate: Record<string, string> = {};
+      if (updateByLabel && label) {
+        noteUpdate.autosaveVersionId = v.id;
+      } else {
+        noteUpdate.currentVersionId = v.id;
+      }
+
       await tx.note.update({
         where: { id },
-        data: { currentVersionId: v.id },
+        data: noteUpdate,
       });
 
       return v;

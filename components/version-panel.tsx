@@ -21,6 +21,7 @@ interface VersionPanelProps {
   currentTitle: string;
   currentContent: string;
   currentVersionId: string | null;
+  editVersionId?: string | null;
   onSelect: (title: string, content: string) => void;
   onVersionChanged: () => void;
   onClose: () => void;
@@ -31,6 +32,7 @@ export function VersionPanel({
   currentTitle,
   currentContent,
   currentVersionId,
+  editVersionId = null,
   onSelect,
   onVersionChanged,
   onClose,
@@ -94,6 +96,22 @@ export function VersionPanel({
     [noteId, loadVersions, onVersionChanged]
   );
 
+  const promoteEditVersion = useCallback(async () => {
+    if (!editVersionId) return;
+    setRestoring(editVersionId);
+    const res = await fetch(`/api/notes/${noteId}/versions/${editVersionId}/promote`, {
+      method: "POST",
+    });
+    setRestoring(null);
+    if (res.ok) {
+      toast.success("Autosave version is now current");
+      await loadVersions();
+      onVersionChanged();
+    } else {
+      toast.error("Failed to make autosave version current");
+    }
+  }, [noteId, editVersionId, loadVersions, onVersionChanged]);
+
   const startEditLabel = useCallback((v: Version) => {
     setEditingLabel(v.id);
     setLabelValue(v.label || "");
@@ -126,6 +144,10 @@ export function VersionPanel({
 
   const isCurrentVersion = (versionId: string) => {
     return currentVersionId === versionId;
+  };
+
+  const isEditVersion = (versionId: string) => {
+    return editVersionId === versionId;
   };
 
   return (
@@ -235,6 +257,11 @@ export function VersionPanel({
                               Current
                             </span>
                           )}
+                          {isEditVersion(v.id) && (
+                            <span className="shrink-0 rounded bg-blue-500/10 px-1 py-px text-[9px] font-medium text-blue-500">
+                              Autosave
+                            </span>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -251,7 +278,23 @@ export function VersionPanel({
                       <span className="block truncate text-[10px] text-muted-foreground">
                         {formatDate(v.createdAt)}
                       </span>
-                      {!isCurrentVersion(v.id) && (
+                      {isEditVersion(v.id) && !isCurrentVersion(v.id) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            promoteEditVersion();
+                          }}
+                          disabled={restoring === v.id}
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-blue-500 hover:bg-blue-500/10 disabled:opacity-50"
+                        >
+                          {restoring === v.id ? (
+                            <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                          ) : (
+                            "Make current"
+                          )}
+                        </button>
+                      )}
+                      {!isCurrentVersion(v.id) && !isEditVersion(v.id) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

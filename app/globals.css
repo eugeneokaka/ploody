@@ -30,6 +30,9 @@
 .tiptap blockquote {
   @apply border-l-4 border-primary/30 pl-4 italic text-muted-foreground my-3;
 }
+.tiptap mark {
+  @apply rounded-sm px-0.5;
+}
 .tiptap code {
   @apply rounded bg-muted px-1 py-0.5 text-sm font-mono;
 }

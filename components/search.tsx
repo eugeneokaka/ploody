@@ -33,7 +33,15 @@ export function SearchBar() {
     setLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`);
+      if (!res.ok) {
+        setResults([]);
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        setResults([]);
+        return;
+      }
       setResults(data);
     } catch {
       setResults([]);

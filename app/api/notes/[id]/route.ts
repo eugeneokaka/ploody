@@ -28,6 +28,7 @@ export async function GET(
       include: {
         folder: { select: { id: true, name: true } },
         currentVersion: true,
+        autosaveVersion: true,
         copiedFrom: {
           select: {
             currentVersion: { select: { title: true } },
@@ -60,13 +61,14 @@ export async function PATCH(
     const userId = await getUserId();
     const { id } = await params;
     const body = await req.json();
-    const { title, content, folderId, isPublic } = body;
+    const { title, content, folderId, isPublic, autosaveEnabled } = body;
 
     console.log("[PATCH /api/notes/:id] noteId:", id, "body:", JSON.stringify(body, null, 2));
 
     const data: Record<string, unknown> = {};
     if (folderId !== undefined) data.folderId = folderId || null;
     if (isPublic !== undefined) data.isPublic = isPublic;
+    if (autosaveEnabled !== undefined) data.autosaveEnabled = autosaveEnabled;
 
     if (Object.keys(data).length > 0) {
       await prisma.note.update({ where: { id, userId }, data });

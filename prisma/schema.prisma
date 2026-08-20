@@ -53,17 +53,21 @@ model Note {
 
   aiEnabled Boolean @default(false)
 
+  autosaveEnabled Boolean @default(false)
+
   copiedFromId String?
   copiedFrom   Note?  @relation("CopiedFrom", fields: [copiedFromId], references: [id], onDelete: SetNull)
   copies       Note[] @relation("CopiedFrom")
 
   currentVersionId String? @unique
+  autosaveVersionId String? @unique
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   folder Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   versions       NoteVersion[] @relation("NoteVersions")
   currentVersion NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  autosaveVersion NoteVersion? @relation("AutosaveVersion", fields: [autosaveVersionId], references: [id], onDelete: SetNull)
   comments       Comment[]
   chunks         NoteChunk[]
 
@@ -75,6 +79,7 @@ model Note {
   @@index([userId])
   @@index([folderId])
   @@index([currentVersionId])
+  @@index([autosaveVersionId])
   @@index([copiedFromId])
   @@map("note")
 }
@@ -119,6 +124,7 @@ model NoteVersion {
 
   note          Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
   currentForNote Note? @relation("CurrentVersion")
+  autosaveForNote Note? @relation("AutosaveVersion")
 
   createdAt DateTime @default(now())
 

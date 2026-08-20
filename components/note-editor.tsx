@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
+import Highlight from "@tiptap/extension-highlight";
 import FontFamily from "@tiptap/extension-font-family";
 import ImageExtension from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -117,6 +118,7 @@ export function NoteEditor({
       }),
       TextStyle,
       Color,
+      Highlight.configure({ multicolor: true }),
       FontFamily.configure({
         types: ["textStyle"],
       }),
@@ -555,7 +557,7 @@ export function NoteEditor({
   return (
     <div className="flex">
       <div className={cn("min-w-0 flex-1 flex-col", showAi ? "hidden sm:flex" : "flex")}>
-        <div className="editor-toolbar sticky top-14 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="editor-toolbar sticky top-[calc(3.5rem+var(--note-header-height,0px))] z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1.5 sm:py-2">
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -677,7 +679,7 @@ export function NoteEditor({
           <div className="relative">
             <ToolbarButton
               onClick={() => setShowHighlight(!showHighlight)}
-              active={showHighlight}
+              active={editor.isActive("highlight")}
               title="Highlight color"
             >
               <Highlighter className="h-4 w-4" />
@@ -697,6 +699,11 @@ export function NoteEditor({
                       style={{ backgroundColor: c.color || "transparent" }}
                       onClick={() => {
                         setHighlightColor(c.color);
+                        if (c.color) {
+                          editor.chain().focus().setHighlight({ color: c.color }).run();
+                        } else {
+                          editor.chain().focus().unsetHighlight().run();
+                        }
                         setShowHighlight(false);
                       }}
                     >
@@ -915,7 +922,7 @@ export function NoteEditor({
       </div>
 
       {showAi && noteId && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:sticky sm:inset-auto sm:top-14 sm:z-30 sm:h-[calc(100vh-3.5rem)] sm:w-96 sm:shrink-0 sm:border-l sm:border-border">
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:sticky sm:inset-auto sm:top-[calc(3.5rem+var(--note-header-height,0px))] sm:z-30 sm:h-[calc(100vh-3.5rem-var(--note-header-height,0px))] sm:w-96 sm:shrink-0 sm:border-l sm:border-border">
           <AiPanel
             noteId={noteId}
             aiEnabled={aiEnabled}

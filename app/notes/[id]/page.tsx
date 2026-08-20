@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2, BookmarkPlus, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Globe, Lock, Copy, Check, History, Loader2, BookmarkPlus, Sparkles, WifiOff, Timer } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { NoteEditor } from "@/components/note-editor";
@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/components/folder-picker";
 import { VersionPanel } from "@/components/version-panel";
 import { CommentSection } from "@/components/comment-section";
+
+const AUTOSAVE_IDLE_MS = 10000;
+const AUTOSAVE_THROTTLE_MS = 30000;
 
 export default function NotePage() {
   const params = useParams();
@@ -22,7 +25,9 @@ export default function NotePage() {
   const [folderName, setFolderName] = useState<string | undefined>();
   const [isPublic, setIsPublic] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(false);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+  const [editVersionId, setEditVersionId] = useState<string | null>(null);
   const [noteUserId, setNoteUserId] = useState<string | null>(null);
   const [copiedFromAuthor, setCopiedFromAuthor] = useState<string | null>(null);
   const [copiedFromTitle, setCopiedFromTitle] = useState<string | null>(null);
@@ -34,6 +39,122 @@ export default function NotePage() {
   const [editingVersion, setEditingVersion] = useState(false);
   const [reloading, setReloading] = useState(false);
   const prevVersionIdRef = useRef<string | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty(
+        "--note-header-height",
+        `${el.offsetHeight}px`
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const [isOnline, setIsOnline] = useState(true);
+  const offlineKey = `offline-note:${id}`;
+
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  const flushOffline = useCallback(async () => {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(offlineKey);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      const res = await fetch(`/api/notes/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          isPublic: data.isPublic,
+        }),
+      });
+      if (res.ok) {
+        localStorage.removeItem(offlineKey);
+        toast.success("Offline changes synced to cloud");
+      }
+    } catch {
+      // still offline or corrupt data — keep the local copy
+    }
+  }, [offlineKey, id]);
+
+  const prevOnlineRef = useRef(true);
+  useEffect(() => {
+    if (isOnline && !prevOnlineRef.current) {
+      flushOffline();
+    }
+    prevOnlineRef.current = isOnline;
+  }, [isOnline, flushOffline]);
+
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    if (navigator.onLine) flushOffline();
+  }, [loading, flushOffline]);
+
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutosavedRef = useRef<string>("");
+  const lastAutosaveTimeRef = useRef(0);
+
+  const doAutosave = useCallback(() => {
+    const snapshot = JSON.stringify({ title: title || "Untitled", content });
+    if (snapshot === lastAutosavedRef.current) return;
+
+    const now = Date.now();
+    const elapsed = now - lastAutosaveTimeRef.current;
+    if (elapsed < AUTOSAVE_THROTTLE_MS) {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = setTimeout(doAutosave, AUTOSAVE_THROTTLE_MS - elapsed);
+      return;
+    }
+
+    lastAutosaveTimeRef.current = now;
+    fetch(`/api/notes/${id}/versions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title || "Untitled", content, label: "Autosave", updateByLabel: true }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("failed");
+        return r.json();
+      })
+      .then(() => {
+        lastAutosavedRef.current = snapshot;
+      })
+      .catch(() => {
+        lastAutosaveTimeRef.current = 0;
+      });
+  }, [id, title, content]);
+
+  useEffect(() => {
+    if (!autosaveEnabled || !isOnline || loading) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(doAutosave, AUTOSAVE_IDLE_MS);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [title, content, autosaveEnabled, isOnline, loading, doAutosave]);
 
   const loadNote = useCallback(({ showLoader = false } = {}) => {
     if (showLoader) setReloading(true);
@@ -47,16 +168,29 @@ export default function NotePage() {
         }
         prevVersionIdRef.current = newVersionId;
 
-        setTitle(note.currentVersion?.title ?? "Untitled");
-        setContent(note.currentVersion?.content ?? "");
+        setCurrentVersionId(newVersionId);
+        setEditVersionId(note.autosaveVersionId ?? null);
+        setNoteUserId(note.userId);
+        setCopiedFromAuthor(note.copiedFrom?.user?.name ?? null);
+        setCopiedFromTitle(note.copiedFrom?.currentVersion?.title ?? null);
         setFolderId(note.folderId);
         setFolderName(note.folder?.name);
         setIsPublic(note.isPublic);
         setAiEnabled(note.aiEnabled ?? false);
-        setCurrentVersionId(newVersionId);
-        setNoteUserId(note.userId);
-        setCopiedFromAuthor(note.copiedFrom?.user?.name ?? null);
-        setCopiedFromTitle(note.copiedFrom?.currentVersion?.title ?? null);
+        setAutosaveEnabled(note.autosaveEnabled ?? false);
+
+        const autosaveVersion = note.autosaveVersion;
+        const displayTitle =
+          autosaveVersion?.title ?? note.currentVersion?.title ?? "Untitled";
+        const displayContent =
+          autosaveVersion?.content ?? note.currentVersion?.content ?? "";
+        setTitle(displayTitle);
+        setContent(displayContent);
+        lastAutosavedRef.current = JSON.stringify({
+          title: displayTitle,
+          content: displayContent,
+        });
+
         setEditorKey((k) => k + 1);
         setLoading(false);
         setReloading(false);
@@ -69,6 +203,24 @@ export default function NotePage() {
   }, [loadNote]);
 
   const handleSave = useCallback(async () => {
+    if (!navigator.onLine) {
+      try {
+        localStorage.setItem(
+          offlineKey,
+          JSON.stringify({
+            title: title || "Untitled",
+            content,
+            isPublic,
+            savedAt: Date.now(),
+          })
+        );
+      } catch {
+        // storage unavailable
+      }
+      toast.info("You're offline — saved on this device");
+      return;
+    }
+
     setSaving(true);
     await fetch(`/api/notes/${id}`, {
       method: "PATCH",
@@ -83,7 +235,7 @@ export default function NotePage() {
         .then((d) => toast.success(`Re-indexed (${d.chunks ?? 0} chunks)`))
         .catch(() => {});
     }
-  }, [id, title, content, isPublic, aiEnabled]);
+  }, [id, title, content, isPublic, aiEnabled, offlineKey]);
 
   const togglePublic = useCallback(() => {
     const next = !isPublic;
@@ -93,6 +245,18 @@ export default function NotePage() {
       body: JSON.stringify({ isPublic: next }),
     });
   }, [id, isPublic]);
+
+  const toggleAutosave = useCallback(() => {
+    const next = !autosaveEnabled;
+    setAutosaveEnabled(next);
+    fetch(`/api/notes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ autosaveEnabled: next }),
+    });
+    if (next) {
+      lastAutosavedRef.current = JSON.stringify({ title: title || "Untitled", content });
+    }
+  }, [id, autosaveEnabled, title, content]);
 
   const copyShareLink = useCallback(() => {
     navigator.clipboard.writeText(`${window.location.origin}/share/${id}`);
@@ -143,14 +307,17 @@ export default function NotePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b border-border px-3 sm:px-6 py-2.5 sm:py-3">
+      <div
+        ref={headerRef}
+        className="sticky top-14 z-40 border-b border-border bg-background px-3 sm:px-6 py-2.5 sm:py-3"
+      >
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Note title..."
           className="border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
         />
-        <div className="flex items-center gap-1.5 sm:gap-3 mt-1.5 sm:mt-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 mt-1.5 sm:mt-2">
           <Link
             href={folderId ? `/folders/${folderId}` : "/"}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -189,7 +356,24 @@ export default function NotePage() {
               AI enabled
             </span>
           )}
-          <div className="flex-1" />
+          {!isOnline && (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+              <WifiOff className="h-3 w-3" />
+              Offline
+            </span>
+          )}
+          <div className="hidden sm:block sm:flex-1" />
+          <button
+            onClick={toggleAutosave}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              autosaveEnabled
+                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <Timer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Autosave</span>
+          </button>
           <button
             onClick={togglePublic}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -273,6 +457,7 @@ export default function NotePage() {
           currentTitle={title}
           currentContent={content}
           currentVersionId={currentVersionId}
+          editVersionId={editVersionId}
           onSelect={handleSelectVersion}
           onVersionChanged={() => loadNote({ showLoader: true })}
           onClose={() => setShowVersions(false)}
