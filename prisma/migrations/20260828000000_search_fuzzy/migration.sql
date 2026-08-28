@@ -9,6 +9,28 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- 2. Plain-text column for search (populated by trigger, see below)
 ALTER TABLE "note_version" ADD COLUMN IF NOT EXISTS "searchText" TEXT NOT NULL DEFAULT '';
 
+-- 3. Convert generated searchVector columns to plain columns so the triggers
+--    can write to them. Prod still has them as GENERATED ALWAYS (from
+--    20260712201450); local dev already has them plain after db push.
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.relname AS tbl, a.attname AS col
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname IN ('note', 'folder')
+      AND a.attname = 'searchVector'
+      AND a.attgenerated <> ''
+  LOOP
+    EXECUTE format('ALTER TABLE %I ALTER COLUMN %I DROP EXPRESSION', r.tbl, r.col);
+  END LOOP;
+END;
+$$;
+
 -- 3. Extract visible text from a TipTap/ProseMirror JSON document.
 --    Walks every nested "content" array and collects all "text" values.
 CREATE OR REPLACE FUNCTION public.extract_tiptap_text(content text)
