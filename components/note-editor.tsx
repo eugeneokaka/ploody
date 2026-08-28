@@ -382,7 +382,7 @@ export function NoteEditor({
       const positions: number[] = [];
       let flat = "";
       const push = (ch: string, pos: number) => {
-        if (/\s/.test(ch)) return;
+        if (/[\s\p{P}]/u.test(ch)) return;
         positions.push(pos);
         flat += ch;
       };
@@ -394,7 +394,7 @@ export function NoteEditor({
         }
       });
 
-      const target = text.replace(/\s+/g, "");
+      const target = text.replace(/[\s\p{P}]/gu, "");
       if (!target) return;
 
       const needles = [
@@ -558,7 +558,7 @@ export function NoteEditor({
     <div className="flex">
       <div className={cn("min-w-0 flex-1 flex-col", showAi ? "hidden sm:flex" : "flex")}>
         <div className="editor-toolbar sticky top-[calc(3.5rem+var(--note-header-height,0px))] z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1.5 sm:py-2">
+        <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1 sm:py-1.5">
           <div className="flex items-center gap-0.5">
             <ToolbarButton
               onClick={() => editor.chain().focus().undo().run()}
@@ -937,7 +937,7 @@ export function NoteEditor({
 }
 
 function Divider() {
-  return <div className="mx-1 h-5 w-px shrink-0 bg-border" />;
+  return <div className="mx-1 h-4 w-px shrink-0 bg-border" />;
 }
 
 function ToolbarButton({
@@ -960,7 +960,7 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30",
+        "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30",
         active &&
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
       )}

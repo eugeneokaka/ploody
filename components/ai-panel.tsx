@@ -33,29 +33,29 @@ export function AiPanel({
   const [indexing, setIndexing] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
   const historyRef = useRef<Message[]>([]);
-  const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const stickToBottomRef = useRef(true);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    endRef.current?.scrollIntoView({ behavior });
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
-  const handleScroll = useCallback(() => {
+  const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceFromBottom < 80;
-    stickToBottomRef.current = atBottom;
-    setShowScrollButton(!atBottom);
+    setShowScrollButton(distanceFromBottom >= 80);
   }, []);
 
+  const handleScroll = useCallback(() => {
+    updateScrollState();
+  }, [updateScrollState]);
+
   useEffect(() => {
-    if (stickToBottomRef.current) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, sources, loading]);
+    updateScrollState();
+  }, [messages, sources, loading, updateScrollState]);
 
   const enable = useCallback(async () => {
     setIndexing(true);
@@ -98,8 +98,6 @@ export function AiPanel({
     setMessages((prev) => [...prev, { role: "user", content: question }]);
     setInput("");
     setLoading(true);
-    stickToBottomRef.current = true;
-    scrollToBottom();
 
     try {
       const res = await fetch(`/api/notes/${noteId}/ask`, {
@@ -257,14 +255,12 @@ export function AiPanel({
                 </div>
               </div>
             )}
-            <div ref={endRef} />
           </div>
 
           {showScrollButton && (
             <button
               type="button"
               onClick={() => {
-                stickToBottomRef.current = true;
                 scrollToBottom();
               }}
               aria-label="Scroll to bottom"

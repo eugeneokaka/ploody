@@ -115,12 +115,13 @@ model NoteChunk {
 }
 
 model NoteVersion {
-  id      String @id @default(cuid())
-  noteId  String
-  version Int
-  label   String?
-  title   String
-  content String @db.Text
+  id         String @id @default(cuid())
+  noteId     String
+  version    Int
+  label      String?
+  title      String
+  content    String @db.Text
+  searchText String @default("")
 
   note          Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
   currentForNote Note? @relation("CurrentVersion")
