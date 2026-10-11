@@ -7,7 +7,6 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react";
 import { Trash2, ExternalLink, Video, Pencil } from "lucide-react";
-import { toast } from "sonner";
 
 export function extractYoutubeId(url: string): string | null {
   const patterns = [
@@ -44,7 +43,7 @@ function YoutubeNodeView({
       if (newVideoId) {
         updateAttributes({ url: newUrl, videoId: newVideoId });
       } else {
-        toast.error("Invalid YouTube URL");
+        alert("Invalid YouTube URL");
       }
     }
   };
@@ -55,6 +54,7 @@ function YoutubeNodeView({
 
   return (
     <NodeViewWrapper>
+    
       <div className="youtube-block" contentEditable={false}>
         <div className="relative group border border-border rounded-lg overflow-hidden not-prose">
           <div className="aspect-video bg-black">
@@ -108,14 +108,8 @@ export const YoutubeExtension = Node.create({
 
   addAttributes() {
     return {
-      url: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-url") || "",
-      },
-      videoId: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-video-id") || "",
-      },
+      url: { default: "" },
+      videoId: { default: "" },
     };
   },
 

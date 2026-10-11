@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { embedTexts } from "@/lib/ai/cohere";
 import { chunkNoteContent } from "@/lib/ai/chunk";
+import { buildNoteSummary } from "@/lib/ai/summarize";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("ai:ingest");
@@ -17,7 +18,7 @@ export async function ingestNote(
     where: { id: noteId, userId },
     select: {
       id: true,
-      currentVersion: { select: { content: true } },
+      currentVersion: { select: { id: true, title: true, content: true } },
     },
   });
 
@@ -52,6 +53,14 @@ export async function ingestNote(
 
   const embeddingStrings = vectors.map((v) => `[${v.join(",")}]`);
 
+  let summary: string | null = null;
+  let outline: string | null = null;
+  if (note.currentVersion) {
+    const built = await buildNoteSummary(note.currentVersion.title, rawContent);
+    summary = built.summary;
+    outline = built.outline;
+  }
+
   await prisma.$transaction(
     async (tx) => {
       const deleted = await tx.$executeRaw`DELETE FROM "note_chunk" WHERE "noteId" = ${noteId}`;
@@ -70,6 +79,13 @@ export async function ingestNote(
           INSERT INTO "note_chunk" ("id", "noteId", "chunkIndex", "content", "embedding", "createdAt", "updatedAt")
           VALUES ${rows}
         `;
+      }
+
+      if (note.currentVersion) {
+        await tx.noteVersion.update({
+          where: { id: note.currentVersion.id },
+          data: { summary, outline },
+        });
       }
     },
     { maxWait: 10000, timeout: 60000 }

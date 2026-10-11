@@ -1,7 +1,9 @@
 const CHUNK_MAX_CHARS = 400;
 const CHUNK_MIN_CHARS = 40;
 
-type Block = { kind: "heading" | "text"; text: string };
+type Block =
+  | { kind: "heading"; text: string; level: number }
+  | { kind: "text"; text: string };
 type JsonNode = Record<string, unknown>;
 
 const BLOCK_TEXT_TYPES = new Set([
@@ -26,7 +28,11 @@ function extractBlocks(node: JsonNode, out: Block[]): void {
 
   if (type === "heading") {
     const text = inlineText(node).replace(/\s+/g, " ").trim();
-    if (text) out.push({ kind: "heading", text });
+    if (text) {
+      const attrs = node.attrs as { level?: number } | undefined;
+      const level = typeof attrs?.level === "number" ? attrs.level : 1;
+      out.push({ kind: "heading", text, level });
+    }
     return;
   }
 
@@ -41,6 +47,27 @@ function extractBlocks(node: JsonNode, out: Block[]): void {
       extractBlocks(child, out);
     }
   }
+}
+
+export type Heading = { text: string; level: number };
+
+/**
+ * Extract the note's headings in document order (cheap, no LLM).
+ * Mirrors the heading detection used by chunkNoteContent.
+ */
+export function extractHeadings(content: string): Heading[] {
+  let doc: JsonNode;
+  try {
+    doc = JSON.parse(content);
+  } catch {
+    return [];
+  }
+
+  const blocks: Block[] = [];
+  extractBlocks(doc, blocks);
+  return blocks
+    .filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading")
+    .map((b) => ({ text: b.text, level: b.level }));
 }
 
 function joinHeadingBody(heading: string, body: string): string {

@@ -122,6 +122,8 @@ model NoteVersion {
   title      String
   content    String @db.Text
   searchText String @default("")
+  summary    String? @db.Text
+  outline    String? @db.Text
 
   note          Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
   currentForNote Note? @relation("CurrentVersion")

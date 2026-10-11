@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { embedQuery } from "@/lib/ai/cohere";
 import { askGroq, type ChatMessage } from "@/lib/ai/groq";
+import { buildNoteSummary } from "@/lib/ai/summarize";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("ai:query");
@@ -29,7 +30,15 @@ export async function queryNote(
     where: { id: noteId, userId },
     select: {
       id: true,
-      currentVersion: { select: { title: true } },
+      currentVersion: {
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          summary: true,
+          outline: true,
+        },
+      },
     },
   });
 
@@ -42,6 +51,35 @@ export async function queryNote(
 
   const title = note.currentVersion?.title ?? "Untitled";
   const isTrivial = TRIVIAL_RE.test(question.trim());
+
+  let summary = note.currentVersion?.summary ?? null;
+  let outline = note.currentVersion?.outline ?? null;
+
+  // Lazy backfill: older AI-enabled notes have no summary until re-saved.
+  if (
+    note.currentVersion &&
+    summary === null &&
+    note.currentVersion.content.trim()
+  ) {
+    try {
+      const built = await buildNoteSummary(title, note.currentVersion.content);
+      summary = built.summary;
+      outline = built.outline;
+      await prisma.noteVersion.update({
+        where: { id: note.currentVersion.id },
+        data: { summary, outline },
+      });
+      log.info(`Backfilled note summary`, { noteId });
+    } catch (e) {
+      log.warn(`Summary backfill failed`, e);
+    }
+  }
+
+  const overviewParts = [`Note title: "${title}"`];
+  if (summary) overviewParts.push(`Summary: ${summary}`);
+  if (outline) overviewParts.push(`Sections:\n${outline}`);
+  const overview = overviewParts.join("\n");
+  const hasOverview = Boolean(summary || outline);
 
   let sources: RetrievedChunk[] = [];
   if (!isTrivial) {
@@ -91,8 +129,11 @@ export async function queryNote(
       {
         role: "system",
         content:
-          "You are a helpful assistant. The user's message includes relevant excerpts from their note. " +
-          `Use those excerpts as your primary source for the note titled "${title}", but answer naturally and helpfully.`,
+          `You are a helpful assistant for the note titled "${title}".\n` +
+          `${overview}\n\n` +
+          "The user's message includes relevant excerpts from this note. Use those excerpts " +
+          "as your primary source, and use the note overview above for general context. " +
+          "Answer naturally and helpfully.",
       },
       ...history,
       {
@@ -101,6 +142,21 @@ export async function queryNote(
       },
     ];
     log.info(`Question related to note, using ${usedSources.length} chunk(s)`);
+  } else if (!isTrivial && hasOverview) {
+    usedSources = [];
+    messages = [
+      {
+        role: "system",
+        content:
+          `You are a helpful assistant for the note titled "${title}".\n` +
+          `${overview}\n\n` +
+          "Answer the user's question about this note using the overview above. " +
+          "If the overview does not cover it, say you don't have enough detail in this note.",
+      },
+      ...history,
+      { role: "user", content: question },
+    ];
+    log.info(`Question using note overview only`);
   } else {
     usedSources = [];
     messages = [
