@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, FileText, FolderOpen, ArrowLeft } from "lucide-react";
 import { CreateFolderButton } from "@/components/create-folder-button";
+import { FolderTitle } from "@/components/folder-title";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -56,9 +57,7 @@ export default async function FolderPage({ params }: Props) {
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700/70">
                 Folder
               </p>
-              <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50">
-                {folder.name}
-              </h1>
+              <FolderTitle id={folder.id} name={folder.name} />
             </div>
           </div>
         </div>

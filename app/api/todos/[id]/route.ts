@@ -25,6 +25,14 @@ const todoSelect = {
       currentVersion: { select: { title: true } },
     },
   },
+  items: {
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      completed: true,
+    },
+  },
 } satisfies Prisma.TodoSelect;
 
 type TodoWithNote = Prisma.TodoGetPayload<{ select: typeof todoSelect }>;

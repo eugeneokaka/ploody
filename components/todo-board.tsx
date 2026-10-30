@@ -22,6 +22,7 @@ import {
   Sparkles,
   StickyNote,
   Trash2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -46,6 +47,12 @@ import {
   type TodoPriorityValue,
 } from "@/lib/todo-constants";
 
+interface TodoSubtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 interface TodoItem {
   id: string;
   title: string;
@@ -57,6 +64,7 @@ interface TodoItem {
   createdAt: string;
   updatedAt: string;
   note: { id: string; title: string } | null;
+  items: TodoSubtask[];
 }
 
 interface TodoApiItem extends Omit<TodoItem, "priority" | "color"> {
@@ -372,6 +380,258 @@ export function TodoBoard() {
         )
       );
       toast.error("Couldn't save that change. Try again?");
+    }
+  }
+
+  async function addItem(todo: TodoItem, title: string) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+
+    const optimistic: TodoSubtask = {
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title: trimmed,
+      completed: false,
+    };
+
+    setTodos((prev) =>
+      sortTodos(
+        prev.map((item) =>
+          item.id === todo.id
+            ? {
+                ...item,
+                completed: false,
+                items: [...item.items, optimistic],
+              }
+            : item
+        )
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/todos/${todo.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      if (!res.ok) throw new Error("Failed to add item");
+
+      const data = (await res.json()) as {
+        item: TodoSubtask;
+        todoCompleted: boolean;
+      };
+
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  completed: data.todoCompleted,
+                  items: item.items.map((sub) =>
+                    sub.id === optimistic.id ? data.item : sub
+                  ),
+                }
+              : item
+          )
+        )
+      );
+    } catch {
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  completed: todo.completed,
+                  items: item.items.filter((sub) => sub.id !== optimistic.id),
+                }
+              : item
+          )
+        )
+      );
+      toast.error("Couldn't add that item. Try again?");
+    }
+  }
+
+  async function toggleItem(todo: TodoItem, subtask: TodoSubtask) {
+    const nextCompleted = !subtask.completed;
+
+    setTodos((prev) =>
+      sortTodos(
+        prev.map((item) =>
+          item.id === todo.id
+            ? {
+                ...item,
+                items: item.items.map((sub) =>
+                  sub.id === subtask.id
+                    ? { ...sub, completed: nextCompleted }
+                    : sub
+                ),
+              }
+            : item
+        )
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/todos/${todo.id}/items/${subtask.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: nextCompleted }),
+      });
+      if (!res.ok) throw new Error("Failed to update item");
+
+      const data = (await res.json()) as {
+        item: TodoSubtask;
+        todoCompleted?: boolean;
+      };
+
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  completed:
+                    data.todoCompleted === undefined
+                      ? item.completed
+                      : data.todoCompleted,
+                  items: item.items.map((sub) =>
+                    sub.id === subtask.id ? data.item : sub
+                  ),
+                }
+              : item
+          )
+        )
+      );
+    } catch {
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  items: item.items.map((sub) =>
+                    sub.id === subtask.id
+                      ? { ...sub, completed: subtask.completed }
+                      : sub
+                  ),
+                }
+              : item
+          )
+        )
+      );
+      toast.error("Couldn't tick that item. Try again?");
+    }
+  }
+
+  async function updateItemTitle(
+    todo: TodoItem,
+    subtask: TodoSubtask,
+    title: string
+  ) {
+    const trimmed = title.trim();
+    if (!trimmed || trimmed === subtask.title) return;
+
+    setTodos((prev) =>
+      sortTodos(
+        prev.map((item) =>
+          item.id === todo.id
+            ? {
+                ...item,
+                items: item.items.map((sub) =>
+                  sub.id === subtask.id ? { ...sub, title: trimmed } : sub
+                ),
+              }
+            : item
+        )
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/todos/${todo.id}/items/${subtask.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      if (!res.ok) throw new Error("Failed to update item");
+
+      const data = (await res.json()) as { item: TodoSubtask };
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  items: item.items.map((sub) =>
+                    sub.id === subtask.id ? data.item : sub
+                  ),
+                }
+              : item
+          )
+        )
+      );
+    } catch {
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? {
+                  ...item,
+                  items: item.items.map((sub) =>
+                    sub.id === subtask.id ? subtask : sub
+                  ),
+                }
+              : item
+          )
+        )
+      );
+      toast.error("Couldn't save that item. Try again?");
+    }
+  }
+
+  async function removeItem(todo: TodoItem, subtask: TodoSubtask) {
+    setTodos((prev) =>
+      sortTodos(
+        prev.map((item) =>
+          item.id === todo.id
+            ? {
+                ...item,
+                items: item.items.filter((sub) => sub.id !== subtask.id),
+              }
+            : item
+        )
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/todos/${todo.id}/items/${subtask.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete item");
+
+      const data = (await res.json()) as { todoCompleted?: boolean };
+      if (data.todoCompleted !== undefined) {
+        const completed = data.todoCompleted;
+        setTodos((prev) =>
+          sortTodos(
+            prev.map((item) =>
+              item.id === todo.id ? { ...item, completed } : item
+            )
+          )
+        );
+      }
+    } catch {
+      setTodos((prev) =>
+        sortTodos(
+          prev.map((item) =>
+            item.id === todo.id
+              ? { ...item, items: [...item.items, subtask] }
+              : item
+          )
+        )
+      );
+      toast.error("Couldn't remove that item. Try again?");
     }
   }
 
@@ -726,6 +986,10 @@ export function TodoBoard() {
                 onToggle={toggleTodo}
                 onUpdate={updateTodo}
                 onDelete={requestDelete}
+                onAddItem={addItem}
+                onToggleItem={toggleItem}
+                onUpdateItem={updateItemTitle}
+                onRemoveItem={removeItem}
               />
             ))}
           </div>
@@ -746,6 +1010,14 @@ interface TodoCardProps {
     >
   ) => void;
   onDelete: (todo: TodoItem) => void;
+  onAddItem: (todo: TodoItem, title: string) => void;
+  onToggleItem: (todo: TodoItem, subtask: TodoSubtask) => void;
+  onUpdateItem: (
+    todo: TodoItem,
+    subtask: TodoSubtask,
+    title: string
+  ) => void;
+  onRemoveItem: (todo: TodoItem, subtask: TodoSubtask) => void;
 }
 
 function TodoCard({
@@ -754,7 +1026,13 @@ function TodoCard({
   onToggle,
   onUpdate,
   onDelete,
+  onAddItem,
+  onToggleItem,
+  onUpdateItem,
+  onRemoveItem,
 }: TodoCardProps) {
+  const [newItem, setNewItem] = useState("");
+
   function commitTitle(event: FocusEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const next = input.value.trim();
@@ -767,8 +1045,32 @@ function TodoCard({
     }
   }
 
+  function commitItemTitle(
+    subtask: TodoSubtask,
+    event: FocusEvent<HTMLInputElement>
+  ) {
+    const input = event.currentTarget;
+    const next = input.value.trim();
+    if (!next) {
+      input.value = subtask.title;
+      return;
+    }
+    if (next !== subtask.title) {
+      onUpdateItem(todo, subtask, next);
+    }
+  }
+
+  function handleAddItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = newItem.trim();
+    if (!trimmed) return;
+    onAddItem(todo, trimmed);
+    setNewItem("");
+  }
+
   const style = STICKY_STYLES[todo.color];
   const overdue = isOverdue(todo);
+  const doneItems = todo.items.filter((item) => item.completed).length;
 
   return (
     <article
@@ -829,6 +1131,97 @@ function TodoCard({
         >
           <Trash2 className="h-4 w-4" />
         </button>
+      </div>
+
+      <div className="mt-3">
+        {todo.items.length > 0 && (
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wide text-stone-600/80">
+            <span>Checklist</span>
+            <span className="tabular-nums">
+              {doneItems}/{todo.items.length}
+            </span>
+          </div>
+        )}
+
+        <ul className="space-y-1">
+          {todo.items.map((subtask) => (
+            <li
+              key={subtask.id}
+              className="group/item flex items-center gap-2"
+            >
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={subtask.completed}
+                aria-label={`Mark "${subtask.title}" ${
+                  subtask.completed ? "as not done" : "as done"
+                }`}
+                onClick={() => onToggleItem(todo, subtask)}
+                className={cn(
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                  subtask.completed
+                    ? "border-emerald-600 bg-emerald-500 text-white"
+                    : "border-stone-400/70 hover:border-stone-600 hover:bg-white/40"
+                )}
+              >
+                {subtask.completed && (
+                  <Check
+                    className="todo-check-pop h-2.5 w-2.5"
+                    strokeWidth={3}
+                  />
+                )}
+              </button>
+
+              <input
+                key={subtask.title}
+                defaultValue={subtask.title}
+                onBlur={(event) => commitItemTitle(subtask, event)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                maxLength={200}
+                aria-label="Checklist item"
+                className={cn(
+                  "min-w-0 flex-1 bg-transparent text-sm leading-snug text-stone-900 outline-none",
+                  subtask.completed &&
+                    "text-stone-600 line-through decoration-stone-500/70"
+                )}
+              />
+
+              <button
+                type="button"
+                onClick={() => onRemoveItem(todo, subtask)}
+                aria-label={`Remove "${subtask.title}"`}
+                className="shrink-0 rounded-full p-0.5 text-stone-500/70 opacity-0 transition-opacity hover:bg-rose-500/15 hover:text-rose-700 focus-visible:opacity-100 group-hover/item:opacity-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <form
+          onSubmit={handleAddItem}
+          className="mt-1.5 flex items-center gap-2"
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+          <input
+            value={newItem}
+            onChange={(event) => setNewItem(event.target.value)}
+            placeholder="Add a checklist item..."
+            maxLength={200}
+            aria-label="New checklist item"
+            className="min-w-0 flex-1 bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-500/60"
+          />
+          {newItem.trim() && (
+            <button
+              type="submit"
+              className="shrink-0 rounded-full bg-stone-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-stone-800"
+            >
+              Add
+            </button>
+          )}
+        </form>
       </div>
 
       {todo.note && (

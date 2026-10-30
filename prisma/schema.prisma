@@ -149,8 +149,9 @@ model Todo {
   dueDate   DateTime?
   color     String       @default("yellow")
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  note Note? @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note  Note?      @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  items TodoItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,6 +160,20 @@ model Todo {
   @@index([noteId])
   @@index([userId, completed])
   @@map("todo")
+}
+
+model TodoItem {
+  id        String   @id @default(cuid())
+  todoId    String
+  title     String
+  completed Boolean  @default(false)
+  position  Int      @default(0)
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([todoId])
+  @@map("todo_item")
 }
 
 enum TodoPriority {

@@ -13,7 +13,7 @@ export default async function Home() {
   if (session?.user) {
     return (
       <div className="flex flex-1 flex-col">
-        <div className="border-b border-amber-200/60 px-4 py-4">
+        <div className="relative z-30 border-b border-amber-200/60 px-4 py-4">
           <div className="mx-auto w-full max-w-2xl rounded-full sunny-panel p-1.5 shadow-sm backdrop-blur">
             <SearchBar />
           </div>

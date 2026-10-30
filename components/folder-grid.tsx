@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Folder as FolderIcon, Plus, FileText, FolderPlus, ChevronDown, MoreVertical, Trash2 } from "lucide-react";
+import { Folder as FolderIcon, Plus, FileText, FolderPlus, ChevronDown, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -49,6 +49,8 @@ export function FolderGrid() {
   const [hasMore, setHasMore] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [name, setName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const initialized = useRef(false);
 
   const loadInitial = useCallback(async () => {
@@ -91,6 +93,34 @@ export function FolderGrid() {
     setName("");
     setShowInput(false);
     await loadInitial();
+  }
+
+  async function handleRename(id: string) {
+    const trimmed = editName.trim();
+    const folder = folders.find((item) => item.id === id);
+    setEditingId(null);
+    if (!trimmed || !folder || trimmed === folder.name) return;
+
+    setFolders((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, name: trimmed } : item
+      )
+    );
+
+    try {
+      await api(`/api/folders/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: trimmed }),
+      });
+      toast.success("Folder renamed.");
+    } catch {
+      setFolders((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, name: folder.name } : item
+        )
+      );
+      toast.error("Couldn't rename that folder. Try again?");
+    }
   }
 
   async function handleDelete(id: string) {
@@ -178,42 +208,95 @@ export function FolderGrid() {
                     TILTS[index % TILTS.length]
                   )}
                 >
-                  <button
-                    onClick={() => router.push(`/folders/${folder.id}`)}
-                    className="flex w-full flex-col gap-2 p-4 pt-6 text-left"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-900/10">
-                      <FolderIcon className="h-5 w-5 text-stone-800" />
-                    </div>
-                    <div>
-                      <p className="truncate text-sm font-semibold text-stone-900">
-                        {folder.name}
-                      </p>
-                      <p className="text-xs text-stone-600">
-                        {itemCount === 0
-                          ? "Empty"
-                          : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
-                      </p>
-                    </div>
-                  </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="absolute right-1.5 top-1.5 rounded-full p-1 text-stone-500 transition-colors hover:bg-stone-900/10 hover:text-stone-900">
-                      <MoreVertical className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => handleDelete(folder.id)}>
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => handleDeleteWithContents(folder.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete with contents
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {editingId === folder.id ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleRename(folder.id);
+                      }}
+                      className="flex w-full flex-col gap-2 p-4 pt-6 text-left"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-900/10">
+                        <FolderIcon className="h-5 w-5 text-stone-800" />
+                      </div>
+                      <div>
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          maxLength={120}
+                          autoFocus
+                          aria-label="Folder name"
+                          className="h-8 text-sm"
+                        />
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            type="submit"
+                            className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/85"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="rounded-full px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => router.push(`/folders/${folder.id}`)}
+                      className="flex w-full flex-col gap-2 p-4 pt-6 text-left"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-900/10">
+                        <FolderIcon className="h-5 w-5 text-stone-800" />
+                      </div>
+                      <div>
+                        <p className="truncate text-sm font-semibold text-stone-900">
+                          {folder.name}
+                        </p>
+                        <p className="text-xs text-stone-600">
+                          {itemCount === 0
+                            ? "Empty"
+                            : `${itemCount} item${itemCount !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                    </button>
+                  )}
+                  {editingId !== folder.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="absolute right-1.5 top-1.5 rounded-full p-1 text-stone-500 transition-colors hover:bg-stone-900/10 hover:text-stone-900">
+                        <MoreVertical className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingId(folder.id);
+                            setEditName(folder.name);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(folder.id)}>
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => handleDeleteWithContents(folder.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete with contents
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               );
             })}
