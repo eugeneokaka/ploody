@@ -46,7 +46,7 @@ export function CreateFolderButton({ parentId }: { parentId: string }) {
             type="submit"
             disabled={loading}
             className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+              "inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:opacity-50"
             )}
           >
             {loading ? "..." : "Create"}
@@ -54,7 +54,7 @@ export function CreateFolderButton({ parentId }: { parentId: string }) {
           <button
             type="button"
             onClick={() => setShowInput(false)}
-            className="rounded-lg p-2 text-sm text-muted-foreground hover:text-foreground"
+            className="rounded-full px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             Cancel
           </button>
@@ -62,7 +62,7 @@ export function CreateFolderButton({ parentId }: { parentId: string }) {
       ) : (
         <button
           onClick={() => setShowInput(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          className="inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-background/60 px-4 py-2 text-sm font-semibold text-stone-600 backdrop-blur transition-colors hover:bg-amber-100/60 hover:text-stone-900 dark:hover:bg-amber-300/10"
         >
           <FolderPlus className="h-4 w-4" />
           New Subfolder

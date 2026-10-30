@@ -35,13 +35,13 @@ export function ChapterPanel({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-64 flex-col border-l border-border bg-background shadow-lg">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <div className="fixed inset-y-0 right-0 z-50 flex w-64 flex-col border-l border-amber-200/70 bg-background/95 shadow-lg backdrop-blur">
+      <div className="flex items-center gap-2 border-b border-amber-200/70 px-4 py-3">
         <ListTree className="h-4 w-4 text-muted-foreground" />
         <span className="flex-1 text-sm font-semibold">Chapters</span>
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-full p-1 text-stone-500 hover:bg-amber-200/50 hover:text-stone-900"
         >
           <X className="h-4 w-4" />
         </button>
@@ -63,9 +63,9 @@ export function ChapterPanel({
               type="button"
               onClick={() => navigateTo(h.pos)}
               className={cn(
-                "flex w-full items-center rounded-md py-1.5 text-left text-xs transition-colors hover:bg-muted",
+                "flex w-full items-center rounded-md py-1.5 text-left text-xs transition-colors hover:bg-amber-100/60",
                 activeHeadingId === h.id
-                  ? "bg-primary/10 font-medium text-primary"
+                  ? "bg-amber-200/70 font-semibold text-amber-900"
                   : "text-muted-foreground",
                 h.level === 1 && "pl-2 font-semibold",
                 h.level === 2 && "pl-6",

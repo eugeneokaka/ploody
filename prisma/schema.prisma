@@ -20,24 +20,25 @@ model User {
   folders       Folder[]
   notes         Note[]
   comments      Comment[]
+  todos         Todo[]
 
   @@unique([email])
   @@map("user")
 }
 
 model Folder {
-  id           String    @id @default(cuid())
+  id           String                   @id @default(cuid())
   name         String
   parentId     String?
   userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent       Folder?   @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children     Folder[]  @relation("FolderTree")
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Folder?                  @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Folder[]                 @relation("FolderTree")
   notes        Note[]
   searchVector Unsupported("tsvector")?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([parentId])
@@ -45,7 +46,7 @@ model Folder {
 }
 
 model Note {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   userId   String
   folderId String?
 
@@ -56,20 +57,21 @@ model Note {
   autosaveEnabled Boolean @default(false)
 
   copiedFromId String?
-  copiedFrom   Note?  @relation("CopiedFrom", fields: [copiedFromId], references: [id], onDelete: SetNull)
-  copies       Note[] @relation("CopiedFrom")
+  copiedFrom   Note?   @relation("CopiedFrom", fields: [copiedFromId], references: [id], onDelete: SetNull)
+  copies       Note[]  @relation("CopiedFrom")
 
-  currentVersionId String? @unique
+  currentVersionId  String? @unique
   autosaveVersionId String? @unique
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   folder Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
-  versions       NoteVersion[] @relation("NoteVersions")
-  currentVersion NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
-  autosaveVersion NoteVersion? @relation("AutosaveVersion", fields: [autosaveVersionId], references: [id], onDelete: SetNull)
-  comments       Comment[]
-  chunks         NoteChunk[]
+  versions        NoteVersion[] @relation("NoteVersions")
+  currentVersion  NoteVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  autosaveVersion NoteVersion?  @relation("AutosaveVersion", fields: [autosaveVersionId], references: [id], onDelete: SetNull)
+  comments        Comment[]
+  chunks          NoteChunk[]
+  todos           Todo[]
 
   searchVector Unsupported("tsvector")?
 
@@ -101,32 +103,32 @@ model Comment {
 }
 
 model NoteChunk {
-  id         String   @id @default(cuid())
+  id         String                       @id @default(cuid())
   noteId     String
   chunkIndex Int
-  content    String   @db.Text
-  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  content    String                       @db.Text
+  note       Note                         @relation(fields: [noteId], references: [id], onDelete: Cascade)
   embedding  Unsupported("vector(1024)")?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime                     @default(now())
+  updatedAt  DateTime                     @updatedAt
 
   @@index([noteId])
   @@map("note_chunk")
 }
 
 model NoteVersion {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   noteId     String
   version    Int
   label      String?
   title      String
-  content    String @db.Text
-  searchText String @default("")
+  content    String  @db.Text
+  searchText String  @default("")
   summary    String? @db.Text
   outline    String? @db.Text
 
-  note          Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
-  currentForNote Note? @relation("CurrentVersion")
+  note            Note  @relation("NoteVersions", fields: [noteId], references: [id], onDelete: Cascade)
+  currentForNote  Note? @relation("CurrentVersion")
   autosaveForNote Note? @relation("AutosaveVersion")
 
   createdAt DateTime @default(now())
@@ -135,6 +137,34 @@ model NoteVersion {
   @@index([noteId])
   @@index([noteId, createdAt])
   @@map("note_version")
+}
+
+model Todo {
+  id        String       @id @default(cuid())
+  userId    String
+  noteId    String?
+  title     String
+  completed Boolean      @default(false)
+  priority  TodoPriority @default(MEDIUM)
+  dueDate   DateTime?
+  color     String       @default("yellow")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note Note? @relation(fields: [noteId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([noteId])
+  @@index([userId, completed])
+  @@map("todo")
+}
+
+enum TodoPriority {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 model Session {

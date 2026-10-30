@@ -119,9 +119,9 @@ export function SearchBar() {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search notes and folders..."
-          className="h-10 pl-9 pr-10 text-base md:h-8 md:text-sm"
+          className="h-10 rounded-full border-amber-200/70 bg-background/60 pl-9 pr-10 text-base focus-visible:ring-amber-400/40 md:h-8 md:text-sm"
         />
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center gap-0.5 rounded-full border border-amber-200/70 bg-amber-100/60 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
           <span className="text-xs">⌘</span>K
         </kbd>
       </div>
@@ -132,7 +132,7 @@ export function SearchBar() {
             className="fixed inset-0 z-40 md:hidden"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-amber-200/70 bg-popover shadow-lg">
           {loading ? (
             <div className="flex items-center gap-3 px-4 py-4 text-sm text-muted-foreground md:px-3 md:py-3">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent md:h-3 md:w-3" />
@@ -151,11 +151,11 @@ export function SearchBar() {
                   onMouseEnter={() => setSelectedIndex(i)}
                   className={cn(
                     "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors md:gap-3 md:px-3 md:py-2.5",
-                    i === selectedIndex ? "bg-muted" : "hover:bg-muted/50"
+                    i === selectedIndex ? "bg-amber-100/70" : "hover:bg-amber-100/40"
                   )}
                 >
                   {result.type === "folder" ? (
-                    <FolderOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary md:h-4 md:w-4" />
+                    <FolderOpen className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 md:h-4 md:w-4" />
                   ) : (
                     <FileText className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground md:h-4 md:w-4" />
                   )}
@@ -164,7 +164,7 @@ export function SearchBar() {
                       <span className="truncate text-base font-medium md:text-sm">
                         {result.title || "Untitled"}
                       </span>
-                      <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground md:px-1.5 md:text-[10px]">
+                      <span className="shrink-0 rounded-full bg-amber-100/70 px-2 py-0.5 text-xs font-medium text-muted-foreground md:px-1.5 md:text-[10px]">
                         {result.type}
                       </span>
                     </div>
@@ -184,7 +184,7 @@ export function SearchBar() {
           )}
 
           {!loading && query.trim() && (
-            <div className="border-t border-border px-4 py-2 text-xs text-muted-foreground md:px-3 md:py-1.5 md:text-[10px]">
+            <div className="border-t border-amber-200/60 px-4 py-2 text-xs text-muted-foreground md:px-3 md:py-1.5 md:text-[10px]">
               <kbd className="font-mono">↑↓</kbd> navigate{" "}
               <kbd className="font-mono">↵</kbd> open{" "}
               <kbd className="font-mono">esc</kbd> close

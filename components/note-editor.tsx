@@ -8,6 +8,8 @@ import Highlight from "@tiptap/extension-highlight";
 import FontFamily from "@tiptap/extension-font-family";
 import ImageExtension from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
+import type { JSONContent } from "@tiptap/core";
 import { DrawingExtension } from "@/lib/drawing-extension";
 import { YoutubeExtension, extractYoutubeId } from "@/lib/youtube-extension";
 import {
@@ -70,6 +72,40 @@ const highlightColors = [
   { name: "None", color: "" },
 ];
 
+function parseTabularText(
+  text: string
+): { title?: string; rows: string[][] } | null {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+    lines.pop();
+  }
+  if (lines.length < 2) return null;
+
+  const hasTabs = lines.some((line) => line.includes("\t"));
+  const cells = lines.map((line) =>
+    hasTabs ? line.split("\t") : line.split(/\s{2,}/)
+  );
+
+  const tableRows = cells.filter((row) => row.length >= 2);
+  if (tableRows.length < 2) return null;
+
+  const width = Math.max(...tableRows.map((row) => row.length));
+  const firstTableLine = cells.findIndex((row) => row.length >= 2);
+  const title = cells
+    .slice(0, firstTableLine)
+    .map((row) => row.join(" ").trim())
+    .filter(Boolean)
+    .join(" ");
+
+  const rows = cells.slice(firstTableLine).map((row) => {
+    const padded = [...row];
+    while (padded.length < width) padded.push("");
+    return padded.map((cell) => cell.trim());
+  });
+
+  return { title: title || undefined, rows };
+}
+
 interface NoteEditorProps {
   content?: string;
   onChange?: (json: string) => void;
@@ -128,6 +164,9 @@ export function NoteEditor({
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
+      TableKit.configure({
+        table: { resizable: true },
+      }),
       DrawingExtension,
       YoutubeExtension,
     ],
@@ -142,7 +181,41 @@ export function NoteEditor({
           "tiptap focus:outline-none min-h-[400px] max-w-3xl mx-auto px-4 sm:px-8 py-6",
       },
       handlePaste: (_view, event, slice) => {
+        const pastedHtml = event.clipboardData?.getData("text/html") ?? "";
         const plainText = event.clipboardData?.getData("text/plain")?.trim();
+
+        if (plainText && !/<table[\s>]/i.test(pastedHtml)) {
+          const tabular = parseTabularText(plainText);
+          if (tabular && editor) {
+            const content: JSONContent[] = [];
+            if (tabular.title) {
+              content.push({
+                type: "paragraph",
+                content: [{ type: "text", text: tabular.title }],
+              });
+            }
+            content.push({
+              type: "table",
+              content: tabular.rows.map((row, rowIndex) => ({
+                type: "tableRow",
+                content: row.map((value) => ({
+                  type: rowIndex === 0 ? "tableHeader" : "tableCell",
+                  content: value
+                    ? [
+                        {
+                          type: "paragraph",
+                          content: [{ type: "text", text: value }],
+                        },
+                      ]
+                    : [{ type: "paragraph" }],
+                })),
+              })),
+            });
+            editor.chain().focus().insertContent(content).run();
+            return true;
+          }
+        }
+
         const videoId = plainText ? extractYoutubeId(plainText) : null;
         const isOnlyYoutubeUrl = Boolean(plainText && videoId && !/\s/.test(plainText));
         if (isOnlyYoutubeUrl) {
@@ -557,7 +630,7 @@ export function NoteEditor({
   return (
     <div className="flex">
       <div className={cn("min-w-0 flex-1 flex-col", showAi ? "hidden sm:flex" : "flex")}>
-        <div className="editor-toolbar sticky top-[calc(3.5rem+var(--note-header-height,0px))] z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="editor-toolbar sticky top-[calc(3.5rem+var(--note-header-height,0px))] z-40 border-b border-amber-200/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 px-2 sm:px-4 py-1 sm:py-1.5">
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -791,7 +864,7 @@ export function NoteEditor({
             type="button"
             onClick={handleStrip}
             title="Remove blank lines and empty code blocks"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-amber-200/50 hover:text-stone-900"
           >
             <Eraser className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Strip</span>
@@ -826,7 +899,7 @@ export function NoteEditor({
         </div>
 
         {showFind && (
-          <div className="relative border-t border-border">
+          <div className="relative border-t border-amber-200/60">
             <div className="flex items-center gap-2 px-4 py-1.5">
               <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <input
@@ -845,14 +918,14 @@ export function NoteEditor({
                   <button
                     type="button"
                     onClick={() => navigateToMatch(currentMatch - 1)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-amber-200/50 hover:text-stone-900"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => navigateToMatch(currentMatch + 1)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-amber-200/50 hover:text-stone-900"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
@@ -861,14 +934,14 @@ export function NoteEditor({
               <button
                 type="button"
                 onClick={closeFind}
-                className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-amber-200/50 hover:text-stone-900"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
             {searchQuery && findMatches.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border-t border-border">
+              <div className="max-h-48 overflow-y-auto border-t border-amber-200/60">
                 {findMatches.map((match, i) => (
                   <button
                     key={`${match.from}-${match.to}`}
@@ -901,7 +974,11 @@ export function NoteEditor({
         )}
       </div>
 
-      <EditorContent editor={editor} />
+      <div className="mx-auto my-6 w-full max-w-4xl px-2 sm:px-4">
+        <div className="note-paper tape-accent rounded-[8px] p-1 shadow-[0_18px_36px_-24px_rgba(41,37,36,0.5)]">
+          <EditorContent editor={editor} />
+        </div>
+      </div>
 
       <input
         ref={fileInputRef}
@@ -922,7 +999,7 @@ export function NoteEditor({
       </div>
 
       {showAi && noteId && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:sticky sm:inset-auto sm:top-[calc(3.5rem+var(--note-header-height,0px))] sm:z-30 sm:h-[calc(100vh-3.5rem-var(--note-header-height,0px))] sm:w-96 sm:shrink-0 sm:border-l sm:border-border">
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background sm:sticky sm:inset-auto sm:top-[calc(3.5rem+var(--note-header-height,0px))] sm:z-30 sm:h-[calc(100vh-3.5rem-var(--note-header-height,0px))] sm:w-96 sm:shrink-0 sm:border-l sm:border-amber-200/70">
           <AiPanel
             noteId={noteId}
             aiEnabled={aiEnabled}
@@ -960,7 +1037,7 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30",
+        "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-amber-200/50 hover:text-stone-900 disabled:pointer-events-none disabled:opacity-30",
         active &&
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
       )}

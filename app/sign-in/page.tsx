@@ -86,15 +86,15 @@ export default function SignInPage() {
 
   if (emailNotVerified) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-sm text-center">
+      <div className="flex min-h-screen items-center justify-center px-4 py-10">
+        <Card className="sticky-note-soft tape-accent mt-3 w-full max-w-sm overflow-visible rounded-[8px] text-center shadow-[0_18px_36px_-22px_rgba(41,37,36,0.55)] ring-0">
           <CardContent className="pt-8 pb-6">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20">
-              <Mail className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-stone-900/10">
+              <Mail className="h-6 w-6 text-stone-800" />
             </div>
-            <CardTitle className="mb-2">Verify your email</CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
-              Your email <span className="font-medium text-foreground">{emailNotVerified}</span>{" "}
+            <CardTitle className="mb-2 text-stone-900">Verify your email</CardTitle>
+            <CardDescription className="text-sm leading-relaxed text-stone-600">
+              Your email <span className="font-semibold text-stone-900">{emailNotVerified}</span>{" "}
               hasn&apos;t been verified yet. Check your inbox for the verification link.
             </CardDescription>
             <div className="mt-6 flex flex-col gap-3">
@@ -102,13 +102,13 @@ export default function SignInPage() {
                 onClick={handleResend}
                 disabled={resending}
                 variant="outline"
-                className="w-full"
+                className="w-full rounded-full border-stone-900/15 bg-white/50 text-stone-800 hover:bg-white/80"
               >
                 {resending ? "Sending..." : "Resend verification email"}
               </Button>
               <Link
                 href="/sign-in"
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-sm text-stone-600 hover:text-stone-900"
               >
                 Try a different account
               </Link>
@@ -120,16 +120,18 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <Card className="sticky-note-soft tape-accent mt-3 w-full max-w-sm overflow-visible rounded-[8px] shadow-[0_18px_36px_-22px_rgba(41,37,36,0.55)] ring-0">
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+          <CardTitle className="text-stone-900">Welcome back</CardTitle>
+          <CardDescription className="text-stone-600">
+            Sign in to your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-stone-700">Email</Label>
               <Input
                 id="email"
                 name="email"
@@ -137,10 +139,11 @@ export default function SignInPage() {
                 placeholder="john@example.com"
                 required
                 autoComplete="email"
+                className="rounded-full border-stone-900/10 bg-white/50 focus-visible:ring-amber-400/40"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-stone-700">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -148,37 +151,38 @@ export default function SignInPage() {
                 placeholder="Enter your password"
                 required
                 autoComplete="current-password"
+                className="rounded-full border-stone-900/10 bg-white/50 focus-visible:ring-amber-400/40"
               />
             </div>
             {error && (
-              <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
             {resendMessage && (
-              <div className="flex items-start gap-2 rounded-md bg-primary/10 p-3 text-sm text-primary">
+              <div className="flex items-start gap-2 rounded-xl bg-amber-500/15 p-3 text-sm text-amber-900">
                 <Mail className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{resendMessage}</span>
               </div>
             )}
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="w-full rounded-full">
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
+              <span className="w-full border-t border-stone-900/10" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or continue with</span>
+              <span className="bg-[#fff9d9] px-2 text-stone-500">or continue with</span>
             </div>
           </div>
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-full border border-stone-900/10 bg-white/50 px-3 py-2 text-sm font-medium text-stone-800 transition-colors hover:bg-white/80 disabled:opacity-50"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -200,9 +204,9 @@ export default function SignInPage() {
             </svg>
             {googleLoading ? "Signing in..." : "Sign in with Google"}
           </button>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-stone-600">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="font-medium text-primary hover:underline">
+            <Link href="/sign-up" className="font-semibold text-stone-900 underline decoration-amber-500/60 underline-offset-4">
               Sign up
             </Link>
           </p>

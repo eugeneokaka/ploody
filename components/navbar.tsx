@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Pencil, LogOut, Globe, LayoutDashboard } from "lucide-react";
+import { Pencil, LogOut, Globe, LayoutDashboard, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -34,10 +34,10 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background">
+    <header className="sticky top-0 z-50 border-b border-amber-200/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary shadow-[0_4px_12px_-6px_rgba(202,138,4,0.75)] ring-1 ring-amber-500/30">
             <Pencil className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-semibold tracking-tight">Ploody</span>
@@ -48,10 +48,10 @@ export function Navbar() {
         <Link
           href="/explore"
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
             pathname === "/explore"
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-primary/25 text-amber-950 dark:bg-primary/15 dark:text-amber-100"
+              : "text-muted-foreground hover:bg-primary/15 hover:text-foreground"
           )}
         >
           <Globe className="h-4 w-4" />
@@ -59,12 +59,25 @@ export function Navbar() {
         </Link>
 
         <Link
+          href="/todos"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+            pathname === "/todos"
+              ? "bg-primary/25 text-amber-950 dark:bg-primary/15 dark:text-amber-100"
+              : "text-muted-foreground hover:bg-primary/15 hover:text-foreground"
+          )}
+        >
+          <ListTodo className="h-4 w-4" />
+          <span className="hidden sm:inline">Todos</span>
+        </Link>
+
+        <Link
           href="/dashboard"
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
             pathname === "/dashboard"
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-primary/25 text-amber-950 dark:bg-primary/15 dark:text-amber-100"
+              : "text-muted-foreground hover:bg-primary/15 hover:text-foreground"
           )}
         >
           <LayoutDashboard className="h-4 w-4" />
@@ -78,7 +91,7 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Avatar className="h-8 w-8 cursor-pointer">
-                  <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
+                  <AvatarFallback className="bg-primary/25 text-xs font-bold text-amber-800 dark:bg-primary/15 dark:text-amber-200">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
@@ -106,7 +119,7 @@ export function Navbar() {
           ) : (
             <Link
               href="/sign-in"
-              className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+              className="inline-flex h-8 items-center justify-center rounded-xl bg-primary shadow-[0_4px_12px_-6px_rgba(202,138,4,0.75)] ring-1 ring-amber-500/30 px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
             >
               Sign In
             </Link>

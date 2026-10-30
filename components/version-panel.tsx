@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, History, Clock, Pencil, Check, RotateCcw } from "lucide-react";
+import { X, History, Clock, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface Version {
@@ -151,32 +151,32 @@ export function VersionPanel({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-full sm:w-80 flex-col border-l border-border bg-background shadow-lg">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <div className="fixed inset-y-0 right-0 z-50 flex w-full sm:w-80 flex-col border-l border-amber-200/70 bg-background/95 shadow-lg backdrop-blur">
+      <div className="flex items-center gap-2 border-b border-amber-200/70 px-4 py-3">
         <History className="h-4 w-4 text-muted-foreground" />
         <span className="flex-1 text-sm font-semibold">Versions</span>
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-full p-1 text-stone-500 hover:bg-amber-200/50 hover:text-stone-900"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="border-b border-border px-4 py-2">
+      <div className="border-b border-amber-200/60 px-4 py-2">
         <button
           onClick={createVersion}
           disabled={creating}
-          className="w-full rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+          className="w-full rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:opacity-50"
         >
           {creating ? "Saving..." : "Save as Version"}
         </button>
       </div>
 
-      <div className="border-b border-border bg-primary/5 px-4 py-2.5">
+      <div className="border-b border-amber-200/70 bg-amber-200/30 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold">Working Copy</span>
-          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
             Current
           </span>
         </div>
@@ -195,7 +195,7 @@ export function VersionPanel({
             <Clock className="h-6 w-6 text-muted-foreground/30" />
             <p className="text-xs text-muted-foreground">No versions yet</p>
             <p className="text-[10px] text-muted-foreground/60">
-              Click "Save as Version" to snapshot your work
+              Click &quot;Save as Version&quot; to snapshot your work
             </p>
           </div>
         ) : (
@@ -210,19 +210,23 @@ export function VersionPanel({
                       selectVersion(v.id);
                     }
                   }}
-                  className={`flex w-full cursor-pointer items-center gap-2 border-b border-border px-4 py-2.5 text-left transition-colors hover:bg-muted ${
-                    selectedId === v.id ? "bg-muted ring-1 ring-inset ring-primary/20" : ""
+                  className={`flex w-full cursor-pointer items-center gap-2 border-b border-amber-200/60 px-4 py-2.5 text-left transition-colors hover:bg-amber-100/60 ${
+                    selectedId === v.id ? "bg-amber-100/70 ring-1 ring-inset ring-amber-400/30" : ""
                   }`}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      selectedId === v.id ? setSelectedId(null) : selectVersion(v.id);
+                      if (selectedId === v.id) {
+                        setSelectedId(null);
+                      } else {
+                        selectVersion(v.id);
+                      }
                     }
                   }}
                 >
-                  <span className="shrink-0 rounded bg-muted-foreground/10 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  <span className="shrink-0 rounded-full bg-amber-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
                     v{v.version}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -237,7 +241,7 @@ export function VersionPanel({
                               if (e.key === "Escape") setEditingLabel(null);
                             }}
                             placeholder="Add label..."
-                            className="h-5 w-full rounded border border-border bg-background px-1 text-[11px] outline-none focus:border-primary"
+                            className="h-5 w-full rounded-full border border-amber-200 bg-white/60 px-2 text-[11px] outline-none focus:border-primary"
                             autoFocus
                           />
                           <button
@@ -253,12 +257,12 @@ export function VersionPanel({
                             {v.label || `Version ${v.version}`}
                           </span>
                           {isCurrentVersion(v.id) && (
-                            <span className="shrink-0 rounded bg-emerald-500/10 px-1 py-px text-[9px] font-medium text-emerald-500">
+                            <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-semibold text-amber-900">
                               Current
                             </span>
                           )}
                           {isEditVersion(v.id) && (
-                            <span className="shrink-0 rounded bg-blue-500/10 px-1 py-px text-[9px] font-medium text-blue-500">
+                            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[9px] font-semibold text-amber-800">
                               Autosave
                             </span>
                           )}
@@ -285,7 +289,7 @@ export function VersionPanel({
                             promoteEditVersion();
                           }}
                           disabled={restoring === v.id}
-                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-blue-500 hover:bg-blue-500/10 disabled:opacity-50"
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/15 disabled:opacity-50"
                         >
                           {restoring === v.id ? (
                             <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
@@ -301,7 +305,7 @@ export function VersionPanel({
                             restoreVersion(v.id);
                           }}
                           disabled={restoring === v.id}
-                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground disabled:opacity-50"
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-amber-200/50 hover:text-stone-900 disabled:opacity-50"
                         >
                           {restoring === v.id ? (
                             <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />

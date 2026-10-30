@@ -161,7 +161,7 @@ function CommentList({ noteId, authorId }: { noteId: string; authorId: string })
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-4">
-      <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
+      <h2 className="mb-4 inline-flex rounded-full bg-primary/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-amber-900 dark:bg-primary/10 dark:text-amber-200">
         Comments {comments.length > 0 && `(${comments.length})`}
       </h2>
 
@@ -218,7 +218,7 @@ function CommentList({ noteId, authorId }: { noteId: string; authorId: string })
           <button
             onClick={loadMore}
             disabled={loadingMore}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            className="rounded-full bg-amber-100/60 px-3 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:bg-amber-200/70 hover:text-stone-900 disabled:opacity-50"
           >
             {loadingMore ? "Loading..." : "Load more comments"}
           </button>
@@ -238,13 +238,13 @@ function CommentList({ noteId, authorId }: { noteId: string; authorId: string })
               }
             }}
             placeholder="Write a comment..."
-            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            className="flex-1 rounded-full border border-amber-200/80 bg-white/50 px-4 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             disabled={sending}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || sending}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? "Sending..." : "Send"}
           </button>

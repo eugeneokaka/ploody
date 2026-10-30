@@ -129,9 +129,9 @@ export function FolderPicker({
       <div key={folder.id}>
         <div
           className={cn(
-            "flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted",
+            "flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-amber-100/60",
             currentFolderId === folder.id &&
-              "bg-muted font-medium text-foreground",
+              "bg-amber-200/60 font-medium text-stone-900",
           )}
           style={{ paddingLeft: 8 + depth * 16 }}
         >
@@ -157,13 +157,13 @@ export function FolderPicker({
             className="flex flex-1 items-center gap-2 min-w-0 text-left"
           >
             {isExpanded ? (
-              <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+              <FolderOpen className="h-4 w-4 shrink-0 text-amber-600" />
             ) : (
               <FolderIcon
                 className={cn(
                   "h-4 w-4 shrink-0",
                   currentFolderId === folder.id
-                    ? "text-primary"
+                    ? "text-amber-600"
                     : "text-muted-foreground",
                 )}
               />
@@ -182,7 +182,7 @@ export function FolderPicker({
       <button
         type="button"
         onClick={handleToggle}
-        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-stone-500 transition-colors hover:bg-amber-200/50 hover:text-stone-900"
       >
         <FolderIcon className="h-4 w-4 shrink-0" />
         <span className="max-w-[160px] truncate">
@@ -197,15 +197,15 @@ export function FolderPicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-popover shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-xl border border-amber-200/80 bg-popover shadow-lg">
           <div className="max-h-72 overflow-y-auto p-1">
             <button
               type="button"
               onClick={() => handleSelect(null)}
               className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted",
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-amber-100/60",
                 !currentFolderId &&
-                  "bg-muted font-medium text-foreground",
+                  "bg-amber-200/60 font-medium text-stone-900",
               )}
             >
               <FolderIcon className="h-4 w-4 text-muted-foreground" />

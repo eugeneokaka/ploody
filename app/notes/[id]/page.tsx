@@ -59,14 +59,31 @@ export default function NotePage() {
   }, [loading]);
 
   useEffect(() => {
-    const onScroll = () => {
-      const isScrolled = window.scrollY > 0;
-      setScrolled(isScrolled);
-      if (!isScrolled) setControlsOpen(false);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const maxScroll =
+        document.documentElement.scrollHeight - window.innerHeight;
+      if (y > 64 && maxScroll > 96) {
+        setScrolled(true);
+      } else if (y <= 4) {
+        setScrolled(false);
+        setControlsOpen(false);
+      }
     };
-    onScroll();
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
 
   const [isOnline, setIsOnline] = useState(true);
@@ -322,7 +339,7 @@ export default function NotePage() {
     <div className="flex flex-1 flex-col">
       <div
         ref={headerRef}
-        className="sticky top-14 z-50 border-b border-border bg-background px-3 sm:px-6 py-1.5 sm:py-2"
+        className="sticky top-14 z-50 border-b border-amber-200/70 bg-background/85 px-3 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-6 sm:py-2"
       >
         <div className="flex items-center gap-2">
           <Input
@@ -336,7 +353,7 @@ export default function NotePage() {
               type="button"
               onClick={() => setControlsOpen((v) => !v)}
               title={controlsOpen ? "Hide controls" : "Show controls"}
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-300/70 bg-background/60 text-stone-500 transition-colors hover:bg-amber-200/50 hover:text-stone-900"
             >
               {controlsOpen ? (
                 <ChevronUp className="h-4 w-4" />
@@ -350,11 +367,11 @@ export default function NotePage() {
         <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1 sm:mt-1.5">
           <Link
             href={folderId ? `/folders/${folderId}` : "/"}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="rounded-full p-1.5 text-stone-500 hover:bg-amber-200/50 hover:text-stone-900"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div className="h-6 w-px bg-border" />
+          <div className="h-6 w-px bg-amber-200/70" />
           <FolderPicker
             noteId={id}
             currentFolderId={folderId}
@@ -365,29 +382,29 @@ export default function NotePage() {
             }}
           />
           {copiedFromAuthor && (
-            <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1 text-xs">
-              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20">
-                <BookmarkPlus className="h-2.5 w-2.5 text-blue-500" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20">
+                <BookmarkPlus className="h-2.5 w-2.5 text-amber-600" />
               </div>
-              <span className="hidden sm:inline text-muted-foreground">Copied from</span>
-              <span className="font-medium text-blue-600 dark:text-blue-400">{copiedFromAuthor}</span>
+              <span className="hidden text-stone-500 sm:inline">Copied from</span>
+              <span className="font-semibold text-amber-800 dark:text-amber-300">{copiedFromAuthor}</span>
               {copiedFromTitle && (
                 <>
-                  <span className="text-muted-foreground/60">|</span>
-                  <span className="truncate max-w-36 text-muted-foreground">{copiedFromTitle}</span>
+                  <span className="text-stone-400">|</span>
+                  <span className="max-w-36 truncate text-stone-500">{copiedFromTitle}</span>
                 </>
               )}
             </div>
           )}
-          <div className="h-6 w-px bg-border" />
+          <div className="h-6 w-px bg-amber-200/70" />
           {aiEnabled && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-2 py-1 text-[10px] font-medium text-yellow-600 dark:text-yellow-400">
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
               <Sparkles className="h-3 w-3" />
               AI enabled
             </span>
           )}
           {!isOnline && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+            <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-600 dark:text-red-400">
               <WifiOff className="h-3 w-3" />
               Offline
             </span>
@@ -395,9 +412,9 @@ export default function NotePage() {
           <div className="hidden sm:block sm:flex-1" />
           <button
             onClick={toggleAutosave}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
               autosaveEnabled
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                ? "bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-300"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
@@ -406,9 +423,9 @@ export default function NotePage() {
           </button>
           <button
             onClick={togglePublic}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
               isPublic
-                ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                ? "bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-300"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
@@ -422,7 +439,7 @@ export default function NotePage() {
           {isPublic && (
             <button
               onClick={copyShareLink}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-stone-500 transition-colors hover:bg-amber-200/50 hover:text-stone-900"
             >
               {copied ? (
                 <Check className="h-3.5 w-3.5" />
@@ -434,21 +451,21 @@ export default function NotePage() {
           )}
           <button
             onClick={() => setShowVersions(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-stone-500 transition-colors hover:bg-amber-200/50 hover:text-stone-900"
           >
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Versions</span>
           </button>
           <button
             onClick={handleDelete}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1 sm:gap-2 rounded-lg bg-primary px-2.5 sm:px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:opacity-50 sm:gap-2 sm:px-4"
           >
             <Save className="h-4 w-4" />
             <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
@@ -460,8 +477,8 @@ export default function NotePage() {
       <div className={`flex-1 relative min-h-[60vh] ${editingVersion ? "animate-editor-switch" : ""}`}>
         {reloading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm transition-opacity">
-            <div className="flex items-center gap-2 rounded-lg bg-popover px-4 py-2 shadow-lg border border-border">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <div className="flex items-center gap-2 rounded-full border border-amber-200/70 bg-popover px-4 py-2 shadow-lg">
+              <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
               <span className="text-sm text-muted-foreground">Loading version...</span>
             </div>
           </div>
@@ -477,7 +494,7 @@ export default function NotePage() {
       </div>
 
       {isPublic && noteUserId && (
-        <div className="border-t border-border">
+        <div className="border-t border-amber-200/70">
           <CommentSection noteId={id} authorId={noteUserId} />
         </div>
       )}

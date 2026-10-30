@@ -120,6 +120,14 @@ export function renderNode(node: Record<string, unknown>): string {
       return `<pre><code>${html}</code></pre>`;
     case "horizontalRule":
       return "<hr>";
+    case "table":
+      return `<div class="tableWrapper"><table>${html}</table></div>`;
+    case "tableRow":
+      return `<tr>${html}</tr>`;
+    case "tableHeader":
+      return `<th>${html}</th>`;
+    case "tableCell":
+      return `<td>${html}</td>`;
     case "hardBreak":
       return "<br>";
     case "image":

@@ -38,17 +38,17 @@ function NewNoteForm() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b border-border px-3 sm:px-6 py-2.5 sm:py-3">
+      <div className="border-b border-amber-200/70 bg-background/80 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Note title..."
-          className="min-w-0 border-0 bg-transparent px-0 text-base sm:text-lg font-semibold shadow-none focus-visible:ring-0"
+          className="min-w-0 border-0 bg-transparent px-0 text-base font-semibold shadow-none focus-visible:ring-0 sm:text-lg"
         />
-        <div className="flex items-center gap-1.5 sm:gap-3 mt-1.5 sm:mt-2">
+        <div className="mt-1.5 flex items-center gap-1.5 sm:mt-2 sm:gap-3">
         <Link
           href={folderId ? `/folders/${folderId}` : "/"}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-full p-1.5 text-stone-500 hover:bg-amber-200/50 hover:text-stone-900"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -56,7 +56,7 @@ function NewNoteForm() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-1 sm:gap-2 rounded-lg bg-primary px-2.5 sm:px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:opacity-50 sm:gap-2 sm:px-4"
         >
           <Save className="h-4 w-4" />
           <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>

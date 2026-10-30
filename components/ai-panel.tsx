@@ -130,22 +130,22 @@ export function AiPanel({
   }, [input, loading, noteId]);
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-2 border-b border-border px-3 sm:px-4 py-2.5 sm:py-3">
+    <div className="flex h-full flex-col bg-background/95 backdrop-blur">
+      <div className="flex items-center gap-2 border-b border-amber-200/70 px-3 py-2.5 sm:px-4 sm:py-3">
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Back to note"
-            className="-ml-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+            className="-ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-amber-200/50 hover:text-stone-900 sm:hidden"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
         )}
-        <Sparkles className="h-5 w-5 sm:h-4 sm:w-4 text-yellow-400" />
+        <Sparkles className="h-5 w-5 sm:h-4 sm:w-4 text-amber-500" />
         <span className="text-base sm:text-sm font-semibold">Ask AI</span>
         {aiEnabled && (
-          <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 rounded-full px-2 py-0.5">
+          <span className="text-[10px] font-medium rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-800 dark:text-amber-300">
             Enabled
           </span>
         )}
@@ -153,7 +153,7 @@ export function AiPanel({
         {aiEnabled ? (
           <button
             onClick={disable}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-stone-500 hover:bg-destructive/10 hover:text-destructive transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Disable
@@ -162,7 +162,7 @@ export function AiPanel({
           <button
             onClick={enable}
             disabled={indexing}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/85 disabled:opacity-50 transition-colors"
           >
             {indexing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -200,10 +200,10 @@ export function AiPanel({
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-base sm:text-sm ${
+                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-base sm:text-sm ${
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "sunny-panel"
                   }`}
                 >
                   {m.role === "assistant" ? (
@@ -220,13 +220,13 @@ export function AiPanel({
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="rounded-lg bg-muted px-3 py-2">
+                <div className="rounded-2xl sunny-panel px-3 py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               </div>
             )}
             {sources.length > 0 && !loading && (
-              <div className="border-t border-border pt-2">
+              <div className="border-t border-amber-200/60 pt-2">
                 <p className="px-1 pb-1.5 text-xs sm:text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Sources — click to jump
                 </p>
@@ -237,9 +237,9 @@ export function AiPanel({
                       type="button"
                       onClick={() => onSourceClick?.(s.content)}
                       title="Jump to this section"
-                      className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                      className="flex w-full items-start gap-2 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-amber-100/60"
                     >
-                      <span className="mt-0.5 flex h-5 w-5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded bg-muted text-xs sm:text-[10px] font-semibold text-muted-foreground">
+                      <span className="mt-0.5 flex h-5 w-5 sm:h-4 sm:w-4 shrink-0 items-center justify-center rounded-full bg-amber-200/70 text-xs font-semibold text-amber-900 sm:text-[10px]">
                         {i + 1}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -264,14 +264,14 @@ export function AiPanel({
                 scrollToBottom();
               }}
               aria-label="Scroll to bottom"
-              className="absolute bottom-3 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-muted hover:text-foreground"
+              className="absolute bottom-3 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-amber-200/70 bg-background text-stone-500 shadow-md transition-colors hover:bg-amber-200/50 hover:text-stone-900"
             >
               <ArrowDown className="h-5 w-5" />
             </button>
           )}
           </div>
 
-          <div className="border-t border-border px-4 py-3">
+          <div className="border-t border-amber-200/70 px-4 py-3">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -284,13 +284,13 @@ export function AiPanel({
                   }
                 }}
                 placeholder="Ask about this note..."
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 sm:py-2 text-base sm:text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="flex-1 rounded-full border border-amber-200/80 bg-white/50 px-4 py-2.5 text-base text-stone-800 outline-none placeholder:text-stone-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 sm:py-2 sm:text-sm"
                 disabled={loading}
               />
               <button
                 onClick={ask}
                 disabled={!input.trim() || loading}
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 sm:px-3 py-2 text-primary-foreground hover:bg-primary/80 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-3.5 py-2 text-primary-foreground shadow-sm transition-colors hover:bg-primary/85 disabled:opacity-50 sm:px-3"
               >
                 <Send className="h-5 w-5 sm:h-4 sm:w-4" />
               </button>
